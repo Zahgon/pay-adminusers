@@ -1,39 +1,37 @@
 package uk.gov.pay.adminusers.resources;
 
 import com.codahale.metrics.health.HealthCheck;
-import com.google.inject.Inject;
-import io.dropwizard.core.setup.Environment;
+import com.codahale.metrics.health.HealthCheckRegistry;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
 import java.util.Collection;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.stream.Collectors;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.ResponseEntity;
+import uk.gov.pay.adminusers.web.JsonMediaTypes;
+import org.springframework.http.HttpStatus;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.Status.OK;
-import static jakarta.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 
-@Path("/")
+@RestController
 public class HealthCheckResource {
-    private final Environment environment;
+    private final HealthCheckRegistry healthCheckRegistry;
 
-    @Inject
-    public HealthCheckResource(Environment environment) {
-        this.environment = environment;
+    public HealthCheckResource(HealthCheckRegistry healthCheckRegistry) {
+        this.healthCheckRegistry = healthCheckRegistry;
     }
 
-    @GET
-    @Path("healthcheck")
-    @Produces(APPLICATION_JSON)
+    @GetMapping("/healthcheck")
+    @JsonMediaTypes
     @Operation(
             tags = "Other",
             summary = "Healthcheck endpoint for adminusers. Check database, and deadlocks",
@@ -51,8 +49,8 @@ public class HealthCheckResource {
                     @ApiResponse(responseCode = "503", description = "Service unavailable. If any healthchecks fail")
             }
     )
-    public Response healthCheck() {
-        SortedMap<String, HealthCheck.Result> results = environment.healthChecks().runHealthChecks();
+    public ResponseEntity<?> healthCheck() {
+        SortedMap<String, HealthCheck.Result> results = healthCheckRegistry.runHealthChecks();
 
         Map<String, Map<String, Object>> response = results.entrySet()
                 .stream()
@@ -63,9 +61,9 @@ public class HealthCheckResource {
                         )
                 ));
 
-        Response.Status status = allHealthy(results.values()) ? OK : SERVICE_UNAVAILABLE;
+        HttpStatus status = allHealthy(results.values()) ? OK : SERVICE_UNAVAILABLE;
 
-        return Response.status(status).entity(response).build();
+        return ResponseEntity.status(status).body(response);
     }
 
     private boolean allHealthy(Collection<HealthCheck.Result> results) {

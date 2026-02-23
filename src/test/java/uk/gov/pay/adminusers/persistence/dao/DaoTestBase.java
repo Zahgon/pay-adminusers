@@ -1,76 +1,63 @@
 package uk.gov.pay.adminusers.persistence.dao;
 
-import com.google.inject.persist.jpa.JpaPersistModule;
-import liquibase.Liquibase;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.resource.ClassLoaderResourceAccessor;
-import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import uk.gov.pay.adminusers.infra.GuicedTestEnvironment;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Import;
+import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
+import uk.gov.pay.adminusers.app.config.PersistenceConfiguration;
+import uk.gov.pay.adminusers.infra.PostgresTestDatabase;
 import uk.gov.pay.adminusers.model.Permission;
 import uk.gov.pay.adminusers.utils.DatabaseTestHelper;
-import uk.gov.service.payments.commons.testing.db.PostgresDockerExtension;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.util.Properties;
 
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomInt;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
+import static uk.gov.pay.adminusers.infra.AppWithPostgresExtension.testSettings;
+import static uk.gov.pay.adminusers.infra.AppWithPostgresExtension.toArguments;
 import static uk.gov.pay.adminusers.model.Permission.permission;
 
 public class DaoTestBase {
 
-    private static Logger logger = LoggerFactory.getLogger(DaoTestBase.class);
-
-    public static PostgresDockerExtension postgres = new PostgresDockerExtension("15.2");
+    private static PostgresTestDatabase database;
 
     protected static DatabaseTestHelper databaseHelper;
-    protected static GuicedTestEnvironment env;
+    protected static ConfigurableApplicationContext env;
 
     @BeforeAll
-    public static void setup() throws Exception {
-        final Properties properties = new Properties();
-        properties.put("jakarta.persistence.jdbc.driver", postgres.getDriverClass());
-        properties.put("jakarta.persistence.jdbc.url", postgres.getConnectionUrl());
-        properties.put("jakarta.persistence.jdbc.user", postgres.getUsername());
-        properties.put("jakarta.persistence.jdbc.password", postgres.getPassword());
+    public static void setup() {
+        database = PostgresTestDatabase.create();
+        databaseHelper = database.createDatabaseTestHelper();
+        database.migrate("config/initial-db-state.xml");
+        database.migrate("it-migrations.xml");
 
-        JpaPersistModule jpaModule = new JpaPersistModule("AdminUsersUnit").properties(properties);
-
-        databaseHelper = new DatabaseTestHelper(Jdbi.create(postgres.getConnectionUrl(), postgres.getUsername(), postgres.getPassword()));
-
-        try (Connection connection = DriverManager.getConnection(postgres.getConnectionUrl(), postgres.getUsername(), postgres.getPassword())) {
-
-            Liquibase migrator = new Liquibase("config/initial-db-state.xml", new ClassLoaderResourceAccessor(), new JdbcConnection(connection));
-            Liquibase migrator2 = new Liquibase("it-migrations.xml", new ClassLoaderResourceAccessor(), new JdbcConnection(connection));
-            migrator.update("");
-            migrator2.update("");
-        }
-
-        env = GuicedTestEnvironment.from(jpaModule).start();
+        env = new SpringApplicationBuilder(DataAccessConfiguration.class)
+                .web(WebApplicationType.NONE)
+                .run(toArguments(testSettings(database)));
     }
 
     @AfterAll
     public static void cleanUp() {
-        try (Connection connection = DriverManager.getConnection(
-                postgres.getConnectionUrl(),
-                postgres.getUsername(),
-                postgres.getPassword())) {
-            Liquibase migrator = new Liquibase("config/initial-db-state.xml", new ClassLoaderResourceAccessor(), new JdbcConnection(connection));
-            Liquibase migrator2 = new Liquibase("it-migrations.xml", new ClassLoaderResourceAccessor(), new JdbcConnection(connection));
-            migrator2.dropAll();
-            migrator.dropAll();
-        } catch (Exception e) {
-            logger.error("Error stopping docker", e);
-        }
-        env.stop();
+        env.close();
+        database.drop();
     }
 
     protected Permission aPermission() {
         return permission(randomInt(), "permission-name-" + randomUuid(), "permission-description" + randomUuid());
+    }
+
+    /**
+     * The service's data source and persistence unit with its DAOs, and nothing else. Not a {@code @Configuration},
+     * so that the service's component scan, which covers the test classes too, leaves it out.
+     */
+    @ImportAutoConfiguration(DataSourceAutoConfiguration.class)
+    @EnableConfigurationProperties(AdminUsersConfig.class)
+    @Import({PersistenceConfiguration.class, UserDao.class, ForgottenPasswordDao.class, RoleDao.class, ServiceDao.class,
+            ServiceRoleDao.class, InviteDao.class, StripeAgreementDao.class, GovUkPayAgreementDao.class})
+    static class DataAccessConfiguration {
     }
 }

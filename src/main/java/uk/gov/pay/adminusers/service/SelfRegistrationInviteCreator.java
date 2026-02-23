@@ -1,6 +1,6 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.persist.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.app.config.LinksConfig;
@@ -13,10 +13,10 @@ import uk.gov.pay.adminusers.persistence.dao.UserDao;
 import uk.gov.pay.adminusers.persistence.entity.InviteEntity;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 
-import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import org.springframework.stereotype.Service;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toUnmodifiableList;
@@ -24,6 +24,7 @@ import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.conflictingEmail;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.internalServerError;
 
+@Service
 public class SelfRegistrationInviteCreator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SelfRegistrationInviteCreator.class);
@@ -35,8 +36,6 @@ public class SelfRegistrationInviteCreator {
     private final LinksConfig linksConfig;
     private final NotificationService notificationService;
     private final SecondFactorAuthenticator secondFactorAuthenticator;
-
-    @Inject
     public SelfRegistrationInviteCreator(InviteDao inviteDao,
                                          UserDao userDao,
                                          RoleDao roleDao,

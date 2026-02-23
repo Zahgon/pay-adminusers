@@ -59,4 +59,40 @@ public class SqsConfig {
     public String getConnectorTasksQueueUrl() {
         return connectorTasksQueueUrl;
     }
+
+    public void setNonStandardServiceEndpoint(boolean nonStandardServiceEndpoint) {
+        this.nonStandardServiceEndpoint = nonStandardServiceEndpoint;
+    }
+
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
+    public void setAccessKey(String accessKey) {
+        this.accessKey = accessKey;
+    }
+
+    public void setSecretKey(String secretKey) {
+        this.secretKey = secretKey;
+    }
+
+    public void setEventSubscriberQueueUrl(String eventSubscriberQueueUrl) {
+        this.eventSubscriberQueueUrl = eventSubscriberQueueUrl;
+    }
+
+    public void setConnectorTasksQueueUrl(String connectorTasksQueueUrl) {
+        this.connectorTasksQueueUrl = connectorTasksQueueUrl;
+    }
+
+    public void setMessageMaximumWaitTimeInSeconds(int messageMaximumWaitTimeInSeconds) {
+        this.messageMaximumWaitTimeInSeconds = messageMaximumWaitTimeInSeconds;
+    }
+
+    public void setMessageMaximumBatchSize(int messageMaximumBatchSize) {
+        this.messageMaximumBatchSize = messageMaximumBatchSize;
+    }
 }

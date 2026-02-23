@@ -1,6 +1,5 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +16,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
+import org.springframework.stereotype.Service;
 
+@Service
 public class EmailService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EmailService.class);
@@ -30,8 +31,6 @@ public class EmailService {
     private final NotificationService notificationService;
     private final ServiceDao serviceDao;
     private final CountryConverter countryConverter;
-
-    @Inject
     public EmailService(NotificationService notificationService,
                         CountryConverter countryConverter,
                         ServiceDao serviceDao) {

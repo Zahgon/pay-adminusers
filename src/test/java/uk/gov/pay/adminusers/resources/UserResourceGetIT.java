@@ -31,7 +31,7 @@ class UserResourceGetIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        RoleDao roleDao = getInjector().getInstance(RoleDao.class);
+        RoleDao roleDao = getBean(RoleDao.class);
         adminRole = roleDao.findByRoleName(RoleName.ADMIN).get().toRole();
         viewOnlyRole = roleDao.findByRoleName(RoleName.VIEW_ONLY).get().toRole();
     }

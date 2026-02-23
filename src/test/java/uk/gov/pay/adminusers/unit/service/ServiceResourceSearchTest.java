@@ -1,16 +1,15 @@
 package uk.gov.pay.adminusers.unit.service;
 
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import io.dropwizard.testing.junit5.ResourceExtension;
-import org.junit.jupiter.api.BeforeEach;
+import io.restassured.response.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.pay.adminusers.fixtures.ServiceEntityFixture;
+import uk.gov.pay.adminusers.infra.ResourceExtension;
 import uk.gov.pay.adminusers.persistence.dao.ServiceDao;
 import uk.gov.pay.adminusers.persistence.dao.UserDao;
 import uk.gov.pay.adminusers.persistence.entity.MerchantDetailsEntityBuilder;
@@ -18,14 +17,17 @@ import uk.gov.pay.adminusers.resources.GovUkPayAgreementRequestValidator;
 import uk.gov.pay.adminusers.resources.ServiceRequestValidator;
 import uk.gov.pay.adminusers.resources.ServiceResource;
 import uk.gov.pay.adminusers.service.*;
+import uk.gov.pay.adminusers.service.ServiceCreator;
+import uk.gov.pay.adminusers.service.ServiceFinder;
+import uk.gov.pay.adminusers.service.ServiceUpdater;
+import uk.gov.pay.adminusers.service.ServiceUserRemover;
 import uk.gov.pay.adminusers.validations.RequestValidations;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.Response;
 import java.util.Collections;
 import java.util.List;
 
+import static io.restassured.http.ContentType.JSON;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -39,7 +41,6 @@ import static uk.gov.pay.adminusers.resources.ServiceRequestValidator.SERVICE_SE
 import static uk.gov.pay.adminusers.resources.ServiceRequestValidator.SERVICE_SEARCH_SPECIAL_CHARS_ERR_MSG;
 
 @ExtendWith(MockitoExtension.class)
-@ExtendWith(DropwizardExtensionsSupport.class)
 public class ServiceResourceSearchTest extends ServiceResourceBaseTest {
 
     // mocks
@@ -48,7 +49,6 @@ public class ServiceResourceSearchTest extends ServiceResourceBaseTest {
     private static final StripeAgreementService mockStripeAgreementService = mock(StripeAgreementService.class);
     private static final GovUkPayAgreementService mockAgreementService = mock(GovUkPayAgreementService.class);
     private static final SendLiveAccountCreatedEmailService mockSendLiveAccountCreatedEmailService = mock(SendLiveAccountCreatedEmailService.class);
-    private static final ServiceServicesFactory mockedServicesFactory = mock(ServiceServicesFactory.class);
     private static final GovUkPayAgreementRequestValidator mockPayAgreementRequestValidator = mock(GovUkPayAgreementRequestValidator.class);
     // --
 
@@ -56,23 +56,22 @@ public class ServiceResourceSearchTest extends ServiceResourceBaseTest {
     private static final ServiceFinder serviceFinder = new ServiceFinder(mockedServiceDao, LINKS_BUILDER);
     private static final ObjectMapper mapper = new ObjectMapper();
 
+    @RegisterExtension
     public static final ResourceExtension underTest = ResourceExtension.builder()
             .addResource(new ServiceResource(
                     mockUserDao,
                     mockServiceDao,
                     LINKS_BUILDER,
                     serviceRequestValidator,
-                    mockedServicesFactory,
+                    mock(ServiceCreator.class),
+                    mock(ServiceUpdater.class),
+                    mock(ServiceUserRemover.class),
+                    serviceFinder,
                     mockStripeAgreementService,
                     mockPayAgreementRequestValidator,
                     mockAgreementService,
                     mockSendLiveAccountCreatedEmailService))
             .build();
-
-    @BeforeEach
-    public void setUp() {
-        given(mockedServicesFactory.serviceFinder()).willReturn(serviceFinder);
-    }
 
     @Test
     public void shouldOK_andReturnServices_whenMatches() throws Exception {
@@ -90,10 +89,10 @@ public class ServiceResourceSearchTest extends ServiceResourceBaseTest {
         given(mockedServiceDao.findByENServiceName("cake")).willReturn(List.of(serviceEntity));
         given(mockedServiceDao.findByServiceMerchantName("bakery")).willReturn(List.of(serviceEntity));
 
-        var response = underTest.target("/v1/api/services/search").request().post(Entity.json(payload));
+        var response = underTest.target().contentType(JSON).body(payload).post("/v1/api/services/search");
 
-        assertThat(response.getStatus(), is(200));
-        var json = mapper.readTree(response.readEntity(String.class));
+        assertThat(response.statusCode(), is(200));
+        var json = mapper.readTree(response.body().asString());
         assertThat(json.get("name_results").size(), is(1));
         assertThat(json.get("merchant_results").size(), is(1));
         assertThat(json.get("name_results").get(0).get("external_id").asText(), is(serviceExternalId));
@@ -109,10 +108,10 @@ public class ServiceResourceSearchTest extends ServiceResourceBaseTest {
         given(mockedServiceDao.findByENServiceName("cake")).willReturn(Collections.emptyList());
         given(mockedServiceDao.findByServiceMerchantName("bakery")).willReturn(Collections.emptyList());
 
-        var response = underTest.target("/v1/api/services/search").request().post(Entity.json(payload));
+        var response = underTest.target().contentType(JSON).body(payload).post("/v1/api/services/search");
 
-        assertThat(response.getStatus(), is(200));
-        var json = mapper.readTree(response.readEntity(String.class));
+        assertThat(response.statusCode(), is(200));
+        var json = mapper.readTree(response.body().asString());
         assertThat(json.get("name_results").size(), is(0));
         assertThat(json.get("merchant_results").size(), is(0));
     }
@@ -121,10 +120,10 @@ public class ServiceResourceSearchTest extends ServiceResourceBaseTest {
     public void shouldError_whenRequestValidationFails() throws JsonProcessingException {
         var payload = "{\"service_name\": \"!@£$%^\", \"service_merchant_name\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}";
 
-        Response response = underTest.target("/v1/api/services/search").request().post(Entity.json(payload));
+        Response response = underTest.target().contentType(JSON).body(payload).post("/v1/api/services/search");
 
-        assertThat(response.getStatus(), is(400));
-        JsonNode json = mapper.readTree(response.readEntity(String.class));
+        assertThat(response.statusCode(), is(400));
+        JsonNode json = mapper.readTree(response.body().asString());
         assertThat(json.get("errors").size(), is(2));
         var errors = List.of(json.get("errors").get(0).asText(), json.get("errors").get(1).asText());
         errors.forEach(err -> assertThat(err, anyOf(equalTo(SERVICE_SEARCH_LENGTH_ERR_MSG), equalTo(SERVICE_SEARCH_SPECIAL_CHARS_ERR_MSG))));

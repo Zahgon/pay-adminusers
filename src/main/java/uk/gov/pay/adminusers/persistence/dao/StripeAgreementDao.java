@@ -1,18 +1,16 @@
 package uk.gov.pay.adminusers.persistence.dao;
 
-import com.google.inject.Provider;
-import com.google.inject.persist.Transactional;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.pay.adminusers.persistence.entity.StripeAgreementEntity;
 
-import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import java.util.Optional;
 
+@Repository
 @Transactional
 public class StripeAgreementDao extends JpaDao<StripeAgreementEntity> {
-
-    @Inject
-    public StripeAgreementDao(Provider<EntityManager> entityManager) {
+    public StripeAgreementDao(EntityManager entityManager) {
         super(entityManager, StripeAgreementEntity.class);
     }
 
@@ -22,7 +20,7 @@ public class StripeAgreementDao extends JpaDao<StripeAgreementEntity> {
         String query = "SELECT s FROM StripeAgreementEntity s " +
                 "WHERE s.service.externalId = :serviceExternalId";
 
-        return entityManager.get()
+        return entityManager
                 .createQuery(query, StripeAgreementEntity.class)
                 .setParameter("serviceExternalId", serviceExternalId)
                 .getResultStream()

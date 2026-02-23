@@ -1,14 +1,21 @@
 package uk.gov.pay.adminusers.resources;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import java.io.IOException;
 
-public class InvalidMerchantDetailsExceptionMapper implements ExceptionMapper<InvalidMerchantDetailsException> {
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 
-    @Override
-    public Response toResponse(InvalidMerchantDetailsException exception) {
-        return Response.status(INTERNAL_SERVER_ERROR).build();
+@RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class InvalidMerchantDetailsExceptionMapper {
+
+    @ExceptionHandler(InvalidMerchantDetailsException.class)
+    public void toResponse(HttpServletResponse response) throws IOException {
+        response.sendError(INTERNAL_SERVER_ERROR.value());
     }
 }

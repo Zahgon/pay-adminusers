@@ -7,22 +7,21 @@ import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
 import uk.gov.pay.adminusers.queue.model.Event;
 import uk.gov.pay.adminusers.queue.model.EventMessage;
 import uk.gov.pay.adminusers.queue.model.SNSMessage;
-import uk.gov.service.payments.commons.queue.exception.QueueException;
-import uk.gov.service.payments.commons.queue.model.QueueMessage;
-import uk.gov.service.payments.commons.queue.sqs.AbstractQueue;
-import uk.gov.service.payments.commons.queue.sqs.SqsQueueService;
+import uk.gov.pay.adminusers.queue.sqs.QueueException;
+import uk.gov.pay.adminusers.queue.sqs.QueueMessage;
+import uk.gov.pay.adminusers.queue.sqs.AbstractQueue;
+import uk.gov.pay.adminusers.queue.sqs.SqsQueueService;
 
-import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Component;
 
+@Component
 public class EventSubscriberQueue extends AbstractQueue {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-
-    @Inject
     public EventSubscriberQueue(SqsQueueService sqsQueueService, AdminUsersConfig adminUsersConfig, ObjectMapper objectMapper) {
         super(sqsQueueService,
                 objectMapper,

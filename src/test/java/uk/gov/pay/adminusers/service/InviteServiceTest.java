@@ -10,6 +10,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import uk.gov.pay.adminusers.model.CompleteInviteResponse;
 import uk.gov.pay.adminusers.model.Invite;
 import uk.gov.pay.adminusers.model.Role;
@@ -23,16 +25,12 @@ import uk.gov.pay.adminusers.persistence.entity.ServiceRoleEntity;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 import uk.gov.service.payments.commons.model.jsonpatch.JsonPatchRequest;
 
-import jakarta.ws.rs.WebApplicationException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static java.lang.String.valueOf;
 import static java.time.ZonedDateTime.now;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
@@ -42,6 +40,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
 import static uk.gov.pay.adminusers.fixtures.InviteEntityFixture.anInviteEntity;
 import static uk.gov.pay.adminusers.fixtures.ServiceEntityFixture.aServiceEntity;
 import static uk.gov.pay.adminusers.fixtures.UserEntityFixture.aUserEntity;
@@ -82,6 +83,8 @@ class InviteServiceTest {
 
     @BeforeEach
     void setUp() {
+        AdminUsersConfig configuration = new AdminUsersConfig();
+        configuration.setLoginAttemptCap(3);
         inviteService = new InviteService(
                 mockInviteDao,
                 mockUserDao,
@@ -89,7 +92,7 @@ class InviteServiceTest {
                 mockSecondFactorAuthenticator,
                 mockPasswordHasher,
                 new LinksBuilder(baseUrl),
-                3
+                configuration
         );
     }
     
@@ -130,7 +133,7 @@ class InviteServiceTest {
             when(mockInviteDao.findByCode(eq(inviteCode))).thenReturn(Optional.empty());
 
             WebApplicationException exception = assertThrows(WebApplicationException.class, () -> inviteService.sendOtp(inviteCode));
-            assertThat(exception.getResponse().getStatus(), is(NOT_FOUND.getStatusCode()));
+            assertThat(exception.getStatus().value(), is(NOT_FOUND.value()));
         }
 
         @Test
@@ -143,7 +146,7 @@ class InviteServiceTest {
             when(mockInviteDao.findByCode(eq(inviteCode))).thenReturn(Optional.of(inviteEntity));
 
             WebApplicationException exception = assertThrows(WebApplicationException.class, () -> inviteService.sendOtp(inviteCode));
-            assertThat(exception.getResponse().getStatus(), is(PRECONDITION_FAILED.getStatusCode()));
+            assertThat(exception.getStatus().value(), is(PRECONDITION_FAILED.value()));
         }
     }
     
@@ -171,7 +174,7 @@ class InviteServiceTest {
             when(mockInviteDao.findByCode(eq(inviteCode))).thenReturn(Optional.empty());
 
             WebApplicationException exception = assertThrows(WebApplicationException.class, () -> inviteService.reprovisionOtp(inviteCode));
-            assertThat(exception.getResponse().getStatus(), is(NOT_FOUND.getStatusCode()));
+            assertThat(exception.getStatus().value(), is(NOT_FOUND.value()));
         }
     }
 
@@ -193,7 +196,7 @@ class InviteServiceTest {
             inviteEntity.setOtpKey(otpKey);
 
             WebApplicationException exception = assertThrows(WebApplicationException.class, () -> inviteService.validateOtp(inviteEntity, passCode));
-            assertThat(exception.getResponse().getStatus(), is(401));
+            assertThat(exception.getStatus().value(), is(401));
         }
 
         @Test
@@ -203,7 +206,7 @@ class InviteServiceTest {
             inviteEntity.setDisabled(true);
 
             WebApplicationException exception = assertThrows(WebApplicationException.class, () -> inviteService.validateOtp(inviteEntity, passCode));
-            assertThat(exception.getResponse().getStatus(), is(410));
+            assertThat(exception.getStatus().value(), is(410));
         }
     }
 
@@ -244,7 +247,7 @@ class InviteServiceTest {
             ));
 
             var exception = assertThrows(WebApplicationException.class, () -> inviteService.updateInvite(inviteCode, List.of(updateRequest)));
-            assertThat(exception.getResponse().getStatus(), is(NOT_FOUND.getStatusCode()));
+            assertThat(exception.getStatus().value(), is(NOT_FOUND.value()));
         }
 
         @Test
@@ -259,7 +262,7 @@ class InviteServiceTest {
             ));
 
             var exception = assertThrows(WebApplicationException.class, () -> inviteService.updateInvite(inviteCode, List.of(updateRequest)));
-            assertThat(exception.getResponse().getStatus(), is(BAD_REQUEST.getStatusCode()));
+            assertThat(exception.getStatus().value(), is(BAD_REQUEST.value()));
         }
     }
 
@@ -273,7 +276,7 @@ class InviteServiceTest {
             when(mockInviteDao.findByCode(inviteCode)).thenReturn(Optional.empty());
 
             WebApplicationException webApplicationException = assertThrows(WebApplicationException.class, () -> inviteService.complete(inviteCode, SMS));
-            assertThat(webApplicationException.getResponse().getStatus(), is(404));
+            assertThat(webApplicationException.getStatus().value(), is(404));
         }
 
         @Test
@@ -282,7 +285,7 @@ class InviteServiceTest {
             when(mockInviteDao.findByCode(inviteCode)).thenReturn(Optional.of(inviteEntity));
 
             WebApplicationException webApplicationException = assertThrows(WebApplicationException.class, () -> inviteService.complete(inviteCode, SMS));
-            assertThat(webApplicationException.getResponse().getStatus(), is(410));
+            assertThat(webApplicationException.getStatus().value(), is(410));
         }
 
         @Test
@@ -293,7 +296,7 @@ class InviteServiceTest {
             when(mockInviteDao.findByCode(inviteCode)).thenReturn(Optional.of(inviteEntity));
 
             WebApplicationException webApplicationException = assertThrows(WebApplicationException.class, () -> inviteService.complete(inviteCode, SMS));
-            assertThat(webApplicationException.getResponse().getStatus(), is(410));
+            assertThat(webApplicationException.getStatus().value(), is(410));
         }
 
         @Test
@@ -390,8 +393,8 @@ class InviteServiceTest {
             when(mockUserDao.findByEmail(email)).thenReturn(Optional.of(userEntity));
 
             WebApplicationException exception = assertThrows(WebApplicationException.class, () -> inviteService.complete(inviteCode, null));
-            assertThat(exception.getResponse().getStatus(), is(409));
-            Map<String, List<String>> entity = (Map<String, List<String>>) exception.getResponse().getEntity();
+            assertThat(exception.getStatus().value(), is(409));
+            Map<String, List<String>> entity = (Map<String, List<String>>) exception.getEntity();
             assertThat(entity.get("errors").get(0), is("User with email [foo@example.com] already exists for self-registration invite"));
         }
 
@@ -407,8 +410,8 @@ class InviteServiceTest {
             when(mockUserDao.findByEmail(email)).thenReturn(Optional.empty());
 
             WebApplicationException exception = assertThrows(WebApplicationException.class, () -> inviteService.complete(inviteCode, null));
-            assertThat(exception.getResponse().getStatus(), is(400));
-            Map<String, List<String>> entity = (Map<String, List<String>>) exception.getResponse().getEntity();
+            assertThat(exception.getStatus().value(), is(400));
+            Map<String, List<String>> entity = (Map<String, List<String>>) exception.getEntity();
             assertThat(entity.get("errors").get(0), is("Second factor not provided when attempting to complete an invite for a non-existent user. invite-code = a-code"));
         }
 
@@ -425,8 +428,8 @@ class InviteServiceTest {
             when(mockUserDao.findByEmail(email)).thenReturn(Optional.empty());
 
             WebApplicationException exception = assertThrows(WebApplicationException.class, () -> inviteService.complete(inviteCode, SMS));
-            assertThat(exception.getResponse().getStatus(), is(500));
-            Map<String, List<String>> entity = (Map<String, List<String>>) exception.getResponse().getEntity();
+            assertThat(exception.getStatus().value(), is(500));
+            Map<String, List<String>> entity = (Map<String, List<String>>) exception.getEntity();
             assertThat(entity.get("errors").get(0), is("Invite with code a-code to invite user to a service does not have a role set"));
         }
 
@@ -448,8 +451,8 @@ class InviteServiceTest {
             when(mockUserDao.findByEmail(email)).thenReturn(Optional.empty());
 
             WebApplicationException exception = assertThrows(WebApplicationException.class, () -> inviteService.complete(inviteCode, SMS));
-            assertThat(exception.getResponse().getStatus(), is(500));
-            Map<String, List<String>> entity = (Map<String, List<String>>) exception.getResponse().getEntity();
+            assertThat(exception.getStatus().value(), is(500));
+            Map<String, List<String>> entity = (Map<String, List<String>>) exception.getEntity();
             assertThat(entity.get("errors").get(0), is("Invite with code a-code to invite user to a service does not have a role set"));
         }
     }

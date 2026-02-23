@@ -27,8 +27,8 @@ class ServiceRoleDaoIT extends DaoTestBase {
     
     @BeforeEach
     public void before() {
-        serviceRoleDao = env.getInstance(ServiceRoleDao.class);
-        adminRole = env.getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();    
+        serviceRoleDao = env.getBean(ServiceRoleDao.class);
+        adminRole = env.getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();    
     }
 
     @Test

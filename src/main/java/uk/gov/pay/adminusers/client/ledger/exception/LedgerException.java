@@ -1,13 +1,18 @@
 package uk.gov.pay.adminusers.client.ledger.exception;
 
-import jakarta.ws.rs.core.Response;
+import org.springframework.http.HttpStatusCode;
+
+import java.net.URI;
+
+import static java.lang.String.format;
 
 public class LedgerException extends RuntimeException {
+
     private Integer status;
 
-    public LedgerException(Response response) {
-        super(response.toString());
-        status = response.getStatus();
+    public LedgerException(URI uri, HttpStatusCode status) {
+        super(format("GET %s answered %d", uri, status.value()));
+        this.status = status.value();
     }
 
     public LedgerException(Exception exception) {

@@ -1,7 +1,6 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
-import com.google.inject.persist.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.pay.adminusers.model.Service;
 import uk.gov.pay.adminusers.persistence.dao.ServiceDao;
 import uk.gov.pay.adminusers.persistence.entity.ServiceEntity;
@@ -10,15 +9,15 @@ import uk.gov.service.payments.commons.model.SupportedLanguage;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.conflictingServiceGatewayAccounts;
 
+@Component
 public class ServiceCreator {
 
     private final ServiceDao serviceDao;
     private final LinksBuilder linksBuilder;
-
-    @Inject
     public ServiceCreator(ServiceDao serviceDao, LinksBuilder linksBuilder) {
         this.serviceDao = serviceDao;
         this.linksBuilder = linksBuilder;

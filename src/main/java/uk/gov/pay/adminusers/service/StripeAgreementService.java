@@ -1,6 +1,5 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.exception.ServiceNotFoundException;
@@ -14,17 +13,17 @@ import java.net.InetAddress;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 import static java.lang.String.format;
 
+@Service
 public class StripeAgreementService {
 
     private static Logger logger = LoggerFactory.getLogger(StripeAgreementService.class);
 
     private final StripeAgreementDao stripeAgreementDao;
     private ServiceDao serviceDao;
-
-    @Inject
     public StripeAgreementService(StripeAgreementDao stripeAgreementDao,
                                   ServiceDao serviceDao) {
         this.stripeAgreementDao = stripeAgreementDao;

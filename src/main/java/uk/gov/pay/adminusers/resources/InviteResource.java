@@ -1,7 +1,6 @@
 package uk.gov.pay.adminusers.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -21,32 +20,34 @@ import uk.gov.pay.adminusers.model.InviteValidateOtpRequest;
 import uk.gov.pay.adminusers.model.SecondFactorMethod;
 import uk.gov.pay.adminusers.service.AdminUsersExceptions;
 import uk.gov.pay.adminusers.service.InviteService;
-import uk.gov.pay.adminusers.service.InviteServiceFactory;
+import uk.gov.pay.adminusers.service.InviteFinder;
+import uk.gov.pay.adminusers.service.JoinServiceInviteCreator;
+import uk.gov.pay.adminusers.service.SelfRegistrationInviteCreator;
 import uk.gov.service.payments.commons.model.jsonpatch.JsonPatchRequest;
 
 import jakarta.validation.Valid;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.PATCH;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
+import uk.gov.pay.adminusers.web.JsonMediaTypes;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.Status.CREATED;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.OK;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static uk.gov.pay.adminusers.utils.email.EmailValidator.isPublicSectorEmail;
 
-@Path("/")
+@RestController
 @Tag(name = "Invites")
 public class InviteResource {
 
@@ -55,18 +56,22 @@ public class InviteResource {
 
     private final InviteService inviteService;
     private final InviteRequestValidator inviteValidator;
-    private final InviteServiceFactory inviteServiceFactory;
+    private final InviteFinder inviteFinder;
+    private final SelfRegistrationInviteCreator selfRegistrationInviteCreator;
+    private final JoinServiceInviteCreator joinServiceInviteCreator;
 
-    @Inject
-    public InviteResource(InviteService service, InviteRequestValidator inviteValidator, InviteServiceFactory inviteServiceFactory) {
+    public InviteResource(InviteService service, InviteRequestValidator inviteValidator, InviteFinder inviteFinder,
+                          SelfRegistrationInviteCreator selfRegistrationInviteCreator,
+                          JoinServiceInviteCreator joinServiceInviteCreator) {
         inviteService = service;
-        this.inviteServiceFactory = inviteServiceFactory;
         this.inviteValidator = inviteValidator;
+        this.inviteFinder = inviteFinder;
+        this.selfRegistrationInviteCreator = selfRegistrationInviteCreator;
+        this.joinServiceInviteCreator = joinServiceInviteCreator;
     }
 
-    @GET
-    @Path("/v1/api/invites/{code}")
-    @Produces(APPLICATION_JSON)
+    @GetMapping("/v1/api/invites/{code}")
+    @JsonMediaTypes
     @Operation(
             summary = "Find invite for invite code",
             responses = {
@@ -75,21 +80,19 @@ public class InviteResource {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
-    public Response getInvite(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathParam("code") String code) {
+    public ResponseEntity<?> getInvite(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathVariable("code") String code) {
         LOGGER.info("Invite GET request");
         if (isNotBlank(code) && code.length() > MAX_LENGTH_CODE) {
-            return Response.status(NOT_FOUND).build();
+            throw new ResponseStatusException(NOT_FOUND);
         }
-        return inviteServiceFactory.inviteFinder().find(code)
-                .map(invite -> Response.status(OK).type(APPLICATION_JSON).entity(invite).build())
-                .orElseGet(() -> Response.status(NOT_FOUND).build());
+        return inviteFinder.find(code)
+                .map(invite -> ResponseEntity.status(OK).contentType(APPLICATION_JSON).body(invite))
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
     }
 
 
-    @PATCH
-    @Path("/v1/api/invites/{code}")
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
+    @PatchMapping("/v1/api/invites/{code}")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             summary = "Update an invite",
             requestBody = @RequestBody(content = @Content(schema = @Schema(example = "[" +
@@ -112,8 +115,8 @@ public class InviteResource {
                     @ApiResponse(responseCode = "404", description = "Invite not found")
             }
     )
-    public Invite updateInvite(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathParam("code") String inviteCode,
-                               JsonNode payload) {
+    public Invite updateInvite(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathVariable("code") String inviteCode,
+                               @org.springframework.web.bind.annotation.RequestBody(required = false) JsonNode payload) {
         inviteValidator.validatePatchRequest(payload);
         List<JsonPatchRequest> updateRequests = StreamSupport.stream(payload.spliterator(), false)
                 .map(JsonPatchRequest::from)
@@ -121,9 +124,8 @@ public class InviteResource {
         return inviteService.updateInvite(inviteCode, updateRequests);
     }
     
-    @POST
-    @Path("/v1/api/invites/{code}/send-otp")
-    @Produces(APPLICATION_JSON)
+    @PostMapping("/v1/api/invites/{code}/send-otp")
+    @JsonMediaTypes
     @Operation(
             summary = "Sends otp verification code to the phone number registered in the invite",
             responses = {
@@ -133,17 +135,17 @@ public class InviteResource {
                     @ApiResponse(responseCode = "412", description = "Precondition failed")
             }
     )
-    public void sendOtp(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathParam("code") String inviteCode) {
+    public ResponseEntity<Void> sendOtp(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathVariable("code") String inviteCode) {
         LOGGER.info("Invite send OTP POST request");
         if (isNotBlank(inviteCode) && inviteCode.length() > MAX_LENGTH_CODE) {
-            throw new WebApplicationException(Response.Status.NOT_FOUND);
+            throw new WebApplicationException(NOT_FOUND);
         }
         inviteService.sendOtp(inviteCode);
+        return ResponseEntity.noContent().build();
     }
 
-    @POST
-    @Path("/v1/api/invites/{code}/reprovision-otp")
-    @Produces(APPLICATION_JSON)
+    @PostMapping("/v1/api/invites/{code}/reprovision-otp")
+    @JsonMediaTypes
     @Operation(
             summary = "Re-provision otp secret key for the invite",
             responses = {
@@ -152,17 +154,16 @@ public class InviteResource {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
-    public Invite reprovisionOtp(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathParam("code") String inviteCode) {
+    public Invite reprovisionOtp(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathVariable("code") String inviteCode) {
         LOGGER.info("Invite re-provision OTP POST request");
         if (isNotBlank(inviteCode) && inviteCode.length() > MAX_LENGTH_CODE) {
-            throw new WebApplicationException(Response.Status.NOT_FOUND);
+            throw new WebApplicationException(NOT_FOUND);
         }
         return inviteService.reprovisionOtp(inviteCode);
     }
 
-    @POST
-    @Path("/v1/api/invites/{code}/complete")
-    @Produces(APPLICATION_JSON)
+    @PostMapping("/v1/api/invites/{code}/complete")
+    @JsonMediaTypes
     @Operation(
             summary = "Completes the invite by creating user/service and invalidating the invite code",
             description = "In the case of a user invite, this resource will assign the new service to the existing user and disables the invite. <br>" +
@@ -174,18 +175,17 @@ public class InviteResource {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
-    public CompleteInviteResponse completeInvite(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathParam("code") String inviteCode, @Valid CompleteInviteRequest completeInviteRequest) {
+    public CompleteInviteResponse completeInvite(@Parameter(example = "d02jddeib0lqpsir28fbskg9v0rv") @PathVariable("code") String inviteCode, @org.springframework.web.bind.annotation.RequestBody(required = false) @Valid CompleteInviteRequest completeInviteRequest) {
         LOGGER.info("Invite complete POST request");
         if (isNotBlank(inviteCode) && inviteCode.length() > MAX_LENGTH_CODE) {
-            throw new WebApplicationException(Response.Status.NOT_FOUND);
+            throw new WebApplicationException(NOT_FOUND);
         }
         SecondFactorMethod secondFactorMethod = (completeInviteRequest != null) ? completeInviteRequest.getSecondFactor() : null;
         return inviteService.complete(inviteCode, secondFactorMethod);
     }
 
-    @GET
-    @Path("/v1/api/invites")
-    @Produces(APPLICATION_JSON)
+    @GetMapping("/v1/api/invites")
+    @JsonMediaTypes
     @Operation(
             summary = "List invites for a service",
             responses = {
@@ -193,16 +193,14 @@ public class InviteResource {
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = Invite.class))))
             }
     )
-    public Response getInvites(@Parameter(example = "ahq8745yq387") @QueryParam("serviceId") String serviceId) {
+    public ResponseEntity<?> getInvites(@Parameter(example = "ahq8745yq387") @RequestParam(value = "serviceId", required = false) String serviceId) {
         LOGGER.info("List invites GET request for service - [ {} ]", serviceId);
-        List<Invite> invites = inviteServiceFactory.inviteFinder().findAllActiveInvites(serviceId);
-        return Response.status(OK).type(APPLICATION_JSON).entity(invites).build();
+        List<Invite> invites = inviteFinder.findAllActiveInvites(serviceId);
+        return ResponseEntity.status(OK).contentType(APPLICATION_JSON).body(invites);
     }
 
-    @POST
-    @Path("/v1/api/invites/create-self-registration-invite")
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
+    @PostMapping("/v1/api/invites/create-self-registration-invite")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             summary = "Creates an invitation to allow self provisioning new service with Pay",
             responses = {
@@ -212,19 +210,17 @@ public class InviteResource {
                     @ApiResponse(responseCode = "403", description = "The email is not an allowed public sector email address")
             }
     )
-    public Response createSelfRegistrationInvite(@Valid CreateSelfRegistrationInviteRequest createSelfRegistrationInviteRequest) {
+    public ResponseEntity<?> createSelfRegistrationInvite(@org.springframework.web.bind.annotation.RequestBody(required = false) @Valid CreateSelfRegistrationInviteRequest createSelfRegistrationInviteRequest) {
         LOGGER.info("Initiating create self-registration invitation request");
         if (!isPublicSectorEmail(createSelfRegistrationInviteRequest.getEmail())) {
             throw AdminUsersExceptions.invalidPublicSectorEmail(createSelfRegistrationInviteRequest.getEmail());
         }
-        Invite invite = inviteServiceFactory.selfRegistrationInviteCreator().doInvite(createSelfRegistrationInviteRequest);
-        return Response.status(CREATED).entity(invite).build();
+        Invite invite = selfRegistrationInviteCreator.doInvite(createSelfRegistrationInviteRequest);
+        return ResponseEntity.status(CREATED).body(invite);
     }
 
-    @POST
-    @Path("/v1/api/invites/create-invite-to-join-service")
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
+    @PostMapping("/v1/api/invites/create-invite-to-join-service")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             summary = "Creates an invitation to allow a new team member to join an existing service.",
             responses = {
@@ -236,17 +232,15 @@ public class InviteResource {
                     @ApiResponse(responseCode = "404", description = "Service or role not found")
             }
     )
-    public Response createInviteToJoinService(@Valid CreateInviteToJoinServiceRequest createInviteToJoinServiceRequest) {
+    public ResponseEntity<?> createInviteToJoinService(@org.springframework.web.bind.annotation.RequestBody(required = false) @Valid CreateInviteToJoinServiceRequest createInviteToJoinServiceRequest) {
         LOGGER.info("Initiating create invite to join service request");
-        return inviteServiceFactory.joinServiceInviteCreator().doInvite(createInviteToJoinServiceRequest)
-                .map(invite -> Response.status(CREATED).entity(invite).build())
+        return joinServiceInviteCreator.doInvite(createInviteToJoinServiceRequest)
+                .map(invite -> ResponseEntity.status(CREATED).body(invite))
                 .orElseThrow(() -> new WebApplicationException(NOT_FOUND));
     }
 
-    @POST
-    @Path("/v2/api/invites/otp/validate")
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
+    @PostMapping("/v2/api/invites/otp/validate")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             summary = "Validates OTP for the invite",
             responses = {
@@ -255,8 +249,9 @@ public class InviteResource {
                     @ApiResponse(responseCode = "404", description = "Invite not found")
             }
     )
-    public void validateOtpKey(@Valid InviteValidateOtpRequest inviteValidateOtpRequest) {
+    public ResponseEntity<Void> validateOtpKey(@org.springframework.web.bind.annotation.RequestBody(required = false) @Valid InviteValidateOtpRequest inviteValidateOtpRequest) {
         LOGGER.info("Invite POST request for validating otp");
         inviteService.validateOtp(inviteValidateOtpRequest);
+        return ResponseEntity.noContent().build();
     }
 }

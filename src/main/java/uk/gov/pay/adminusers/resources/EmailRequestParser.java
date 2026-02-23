@@ -2,19 +2,18 @@ package uk.gov.pay.adminusers.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
+@Component
 public class EmailRequestParser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EmailRequestParser.class);
 
     private ObjectMapper mapper;
-
-    @Inject
     public EmailRequestParser(ObjectMapper mapper) {
         this.mapper = mapper;
     }

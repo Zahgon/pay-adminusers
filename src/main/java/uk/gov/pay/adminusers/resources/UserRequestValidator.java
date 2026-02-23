@@ -1,7 +1,6 @@
 package uk.gov.pay.adminusers.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.inject.Inject;
 import org.apache.commons.lang3.tuple.Pair;
 import uk.gov.pay.adminusers.model.SecondFactorMethod;
 import uk.gov.pay.adminusers.utils.Errors;
@@ -12,6 +11,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import org.springframework.stereotype.Component;
 
 import static java.lang.String.format;
 import static uk.gov.pay.adminusers.model.User.FIELD_EMAIL;
@@ -22,12 +22,11 @@ import static uk.gov.pay.adminusers.validations.UserPatchValidations.getUserPatc
 import static uk.gov.pay.adminusers.validations.UserPatchValidations.isAllowedOpForPath;
 import static uk.gov.pay.adminusers.validations.UserPatchValidations.isPathAllowed;
 
+@Component
 public class UserRequestValidator {
 
     private static final int MAX_LENGTH_FIELD_USER_EMAIL = 254;
     private final RequestValidations requestValidations;
-
-    @Inject
     public UserRequestValidator(RequestValidations requestValidations) {
         this.requestValidations = requestValidations;
     }

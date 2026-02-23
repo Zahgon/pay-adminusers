@@ -2,80 +2,83 @@ package uk.gov.pay.adminusers.client.ledger.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import uk.gov.pay.adminusers.client.ledger.exception.LedgerException;
 import uk.gov.pay.adminusers.client.ledger.model.LedgerSearchTransactionsResponse;
 import uk.gov.pay.adminusers.client.ledger.model.LedgerTransaction;
 
-import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriBuilder;
+import java.net.URI;
 import java.util.Optional;
 
 import static java.lang.String.format;
 import static net.logstash.logback.argument.StructuredArguments.kv;
-import static org.apache.http.HttpStatus.SC_OK;
-import static uk.gov.service.payments.logging.LoggingKeys.GATEWAY_ACCOUNT_ID;
+import static uk.gov.pay.adminusers.utils.LoggingKeys.GATEWAY_ACCOUNT_ID;
 
 public class LedgerService {
 
+    private static final int SC_OK = 200;
+
     private final Logger logger = LoggerFactory.getLogger(LedgerService.class);
 
-    private final Client client;
+    private final RestClient client;
     private final String ledgerUrl;
 
-    @Inject
-    public LedgerService(Client client, AdminUsersConfig configuration) {
+    public LedgerService(RestClient client, String ledgerUrl) {
         this.client = client;
-        this.ledgerUrl = configuration.getLedgerBaseUrl();
+        this.ledgerUrl = ledgerUrl;
     }
 
     public Optional<LedgerTransaction> getTransaction(String id) {
-        var uri = UriBuilder
-                .fromPath(ledgerUrl)
+        URI uri = UriComponentsBuilder
+                .fromUriString(ledgerUrl)
                 .path(format("/v1/transaction/%s", id))
-                .queryParam("override_account_id_restriction", "true");
+                .queryParam("override_account_id_restriction", "true")
+                .encode()
+                .build()
+                .toUri();
+
         logger.info("Querying ledger for transaction: {}", id);
-        return getTransactionFromLedger(uri);
+
+        ResponseEntity<LedgerTransaction> response = getResponse(uri, LedgerTransaction.class);
+        if (response.getStatusCode().value() == SC_OK) {
+            return Optional.ofNullable(response.getBody());
+        }
+        return Optional.empty();
     }
 
     public LedgerSearchTransactionsResponse searchTransactions(String gatewayAccountId, int limit) {
-        var uri = UriBuilder
-                .fromPath(ledgerUrl)
+        URI uri = UriComponentsBuilder
+                .fromUriString(ledgerUrl)
                 .path("/v1/transaction")
                 .queryParam("account_id", gatewayAccountId)
-                .queryParam("display_size", limit);
+                .queryParam("display_size", limit)
+                .encode()
+                .build()
+                .toUri();
 
         logger.info("Searching transactions",
                 kv(GATEWAY_ACCOUNT_ID, gatewayAccountId));
 
-        Response response = getResponse(uri);
-
-        if (response.getStatus() == SC_OK) {
-            return response.readEntity(LedgerSearchTransactionsResponse.class);
+        ResponseEntity<LedgerSearchTransactionsResponse> response = getResponse(uri, LedgerSearchTransactionsResponse.class);
+        if (response.getStatusCode().value() == SC_OK) {
+            return response.getBody();
         }
-
-        throw new LedgerException(response);
+        throw new LedgerException(uri, response.getStatusCode());
     }
 
-    private Optional<LedgerTransaction> getTransactionFromLedger(UriBuilder uri) {
-        Response response = getResponse(uri);
-
-        if (response.getStatus() == SC_OK) {
-            return Optional.of(response.readEntity(LedgerTransaction.class));
-        }
-
-        return Optional.empty();
-    }
-
-    private Response getResponse(UriBuilder uri) {
+    private <T> ResponseEntity<T> getResponse(URI uri, Class<T> type) {
         return client
-                .target(uri)
-                .request()
+                .get()
+                .uri(uri)
                 .accept(MediaType.APPLICATION_JSON)
-                .get();
+                .exchange((request, response) -> {
+                    HttpStatusCode status = response.getStatusCode();
+                    T body = status.value() == SC_OK ? response.bodyTo(type) : null;
+                    return ResponseEntity.status(status).headers(response.getHeaders()).body(body);
+                });
     }
-
 }

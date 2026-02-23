@@ -5,9 +5,11 @@ import uk.gov.pay.adminusers.utils.Errors;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Component;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
+@Component
 public class ForgottenPasswordValidator {
     public Optional<Errors> validateCreateRequest(JsonNode payload) {
         if (payload != null &&

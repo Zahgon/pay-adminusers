@@ -1,7 +1,6 @@
 package uk.gov.pay.adminusers.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -11,20 +10,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.service.ResetPasswordService;
 
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
 import java.util.List;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.http.ResponseEntity;
+import uk.gov.pay.adminusers.web.JsonMediaTypes;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.NO_CONTENT;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static uk.gov.pay.adminusers.utils.Errors.from;
 
-@Path("/")
+@RestController
 public class ResetPasswordResource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ResetPasswordResource.class);
@@ -34,17 +32,13 @@ public class ResetPasswordResource {
 
     private final ResetPasswordValidator resetPasswordValidator;
     private final ResetPasswordService resetPasswordService;
-
-    @Inject
     public ResetPasswordResource(ResetPasswordValidator resetPasswordValidator, ResetPasswordService resetPasswordService) {
         this.resetPasswordValidator = resetPasswordValidator;
         this.resetPasswordService = resetPasswordService;
     }
 
-    @Path(RESET_PASSWORD_RESOURCE)
-    @POST
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @PostMapping(RESET_PASSWORD_RESOURCE)
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = {"Passwords"},
             summary = "Reset password",
@@ -59,19 +53,17 @@ public class ResetPasswordResource {
                     @ApiResponse(responseCode = "404", description = "Expired or non-existent code")
             }
     )
-    public Response resetForgottenPassword(JsonNode payload) {
+    public ResponseEntity<?> resetForgottenPassword(@org.springframework.web.bind.annotation.RequestBody(required = false) JsonNode payload) {
 
         return resetPasswordValidator.validateResetRequest(payload)
-                .map(errors -> Response.status(BAD_REQUEST)
-                        .type(APPLICATION_JSON)
-                        .entity(errors).build())
+                .<ResponseEntity<?>>map(errors -> ResponseEntity.status(BAD_REQUEST)
+                        .contentType(APPLICATION_JSON)
+                        .body(errors))
                 .orElseGet(() -> resetPasswordService.updatePassword(payload.get(FIELD_CODE).asText(), payload.get(FIELD_PASSWORD).asText())
                         .map(userId -> {
                             LOGGER.info("user ID {} updated password successfully", userId);
-                            return Response.status(NO_CONTENT).build();
+                            return ResponseEntity.status(NO_CONTENT).build();
                         })
-                        .orElseGet(() -> Response.status(NOT_FOUND)
-                                .entity(from(List.of(String.format("Field [%s] non-existent/expired", FIELD_CODE))))
-                                .build()));
+                        .orElseGet(() -> ResponseEntity.status(NOT_FOUND).body(from(List.of(String.format("Field [%s] non-existent/expired", FIELD_CODE))))));
     }
 }

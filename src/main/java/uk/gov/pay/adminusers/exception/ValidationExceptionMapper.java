@@ -1,23 +1,26 @@
 package uk.gov.pay.adminusers.exception;
 
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import uk.gov.service.payments.commons.api.exception.ValidationException;
 
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
-
+import java.util.List;
 import java.util.Map;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 
-public class ValidationExceptionMapper implements ExceptionMapper<ValidationException> {
+@RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class ValidationExceptionMapper {
 
-    @Override
-    public Response toResponse(ValidationException exception) {
-        return Response.status(BAD_REQUEST)
-                .entity(Map.of("errors", exception.getErrors()))
-                .type(MediaType.APPLICATION_JSON)
-                .build();
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<Map<String, List<String>>> toResponse(ValidationException exception) {
+        return ResponseEntity.status(BAD_REQUEST)
+                .contentType(APPLICATION_JSON)
+                .body(Map.of("errors", exception.getErrors()));
     }
-
 }

@@ -7,6 +7,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpMethod;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import uk.gov.pay.adminusers.model.Link;
 import uk.gov.pay.adminusers.model.Service;
 import uk.gov.pay.adminusers.persistence.dao.ServiceDao;
@@ -14,8 +16,6 @@ import uk.gov.pay.adminusers.persistence.entity.GatewayAccountIdEntity;
 import uk.gov.pay.adminusers.persistence.entity.ServiceEntity;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 
-import jakarta.ws.rs.HttpMethod;
-import jakarta.ws.rs.WebApplicationException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -178,7 +178,7 @@ public class ServiceCreatorTest {
         assertThat(service.getLinks(), hasSize(1));
         Link selfLink = service.getLinks().get(0);
         assertThat(selfLink.getRel(), is(Link.Rel.SELF));
-        assertThat(selfLink.getMethod(), is(HttpMethod.GET));
+        assertThat(selfLink.getMethod(), is(HttpMethod.GET.name()));
         assertThat(selfLink.getHref(), is(BASE_URL + "/v1/api/services/" + service.getExternalId()));
     }
 }

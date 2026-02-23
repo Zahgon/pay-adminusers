@@ -1,12 +1,12 @@
 package uk.gov.pay.adminusers.unit.service;
 
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import io.dropwizard.testing.junit5.ResourceExtension;
 import io.restassured.path.json.JsonPath;
-import org.junit.jupiter.api.BeforeEach;
+import io.restassured.response.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.adminusers.infra.ResourceExtension;
 import uk.gov.pay.adminusers.persistence.dao.ServiceDao;
 import uk.gov.pay.adminusers.persistence.dao.UserDao;
 import uk.gov.pay.adminusers.persistence.entity.GatewayAccountIdEntity;
@@ -18,13 +18,14 @@ import uk.gov.pay.adminusers.resources.ServiceRequestValidator;
 import uk.gov.pay.adminusers.resources.ServiceResource;
 import uk.gov.pay.adminusers.service.GovUkPayAgreementService;
 import uk.gov.pay.adminusers.service.SendLiveAccountCreatedEmailService;
+import uk.gov.pay.adminusers.service.ServiceCreator;
 import uk.gov.pay.adminusers.service.ServiceFinder;
-import uk.gov.pay.adminusers.service.ServiceServicesFactory;
+import uk.gov.pay.adminusers.service.ServiceUpdater;
+import uk.gov.pay.adminusers.service.ServiceUserRemover;
 import uk.gov.pay.adminusers.service.StripeAgreementService;
 import uk.gov.pay.adminusers.validations.RequestValidations;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 
-import jakarta.ws.rs.core.Response;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.Optional;
@@ -40,13 +41,10 @@ import static org.mockito.Mockito.mock;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 
 @ExtendWith(MockitoExtension.class)
-@ExtendWith(DropwizardExtensionsSupport.class)
 class ServiceResourceFindTest extends ServiceResourceBaseTest {
 
     private static ServiceDao mockedServiceDao = mock(ServiceDao.class);
     private static UserDao mockedUserDao = mock(UserDao.class);
-
-    private static ServiceServicesFactory mockedServicesFactory = mock(ServiceServicesFactory.class);
 
     private static ServiceFinder serviceFinder = new ServiceFinder(mockedServiceDao, LINKS_BUILDER);
     private static ServiceRequestValidator serviceRequestValidator = new ServiceRequestValidator(new RequestValidations(), null);
@@ -55,23 +53,22 @@ class ServiceResourceFindTest extends ServiceResourceBaseTest {
     private static GovUkPayAgreementService agreementService = mock(GovUkPayAgreementService.class);
     private static SendLiveAccountCreatedEmailService sendLiveAccountCreatedEmailService = mock(SendLiveAccountCreatedEmailService.class);
 
+    @RegisterExtension
     public static final ResourceExtension RESOURCES = ResourceExtension.builder()
             .addResource(new ServiceResource(
                     mockedUserDao,
                     mockedServiceDao,
                     LINKS_BUILDER,
                     serviceRequestValidator,
-                    mockedServicesFactory,
+                    mock(ServiceCreator.class),
+                    mock(ServiceUpdater.class),
+                    mock(ServiceUserRemover.class),
+                    serviceFinder,
                     stripeAgreementService,
                     payAgreementRequestValidator,
                     agreementService,
                     sendLiveAccountCreatedEmailService))
             .build();
-
-    @BeforeEach
-    public void setUp() {
-        given(mockedServicesFactory.serviceFinder()).willReturn(serviceFinder);
-    }
 
     @Test
     void shouldGet_existingServiceById_withDefaultEnNameVariant() {
@@ -79,11 +76,11 @@ class ServiceResourceFindTest extends ServiceResourceBaseTest {
         ServiceEntity serviceEntity = ServiceEntityFixture.aServiceEntity().withExternalId(serviceExternalId).build();
         given(mockedServiceDao.findByExternalId(serviceExternalId)).willReturn(Optional.of(serviceEntity));
 
-        Response response = RESOURCES.target(format("/v1/api/services/%s", serviceExternalId)).request().get();
+        Response response = RESOURCES.target().get(format("/v1/api/services/%s", serviceExternalId));
 
-        assertThat(response.getStatus(), is(200));
+        assertThat(response.statusCode(), is(200));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("name"), is(serviceEntity.getServiceNames().get(SupportedLanguage.ENGLISH).getName()));
@@ -105,10 +102,10 @@ class ServiceResourceFindTest extends ServiceResourceBaseTest {
                 .withServiceNameEntity(SupportedLanguage.WELSH, CY_SERVICE_NAME)
                 .build();
         given(mockedServiceDao.findByExternalId(serviceExternalId)).willReturn(Optional.of(serviceEntity));
-        Response response = RESOURCES.target(format("/v1/api/services/%s", serviceExternalId)).request().get();
+        Response response = RESOURCES.target().get(format("/v1/api/services/%s", serviceExternalId));
 
-        assertThat(response.getStatus(), is(200));
-        String body = response.readEntity(String.class);
+        assertThat(response.statusCode(), is(200));
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("name"), is(serviceEntity.getServiceNames().get(SupportedLanguage.ENGLISH).getName()));
@@ -127,11 +124,11 @@ class ServiceResourceFindTest extends ServiceResourceBaseTest {
                 .withServiceNameEntity(SupportedLanguage.WELSH, CY_SERVICE_NAME)
                 .build();
         given(mockedServiceDao.findByExternalId(serviceExternalId)).willReturn(Optional.of(serviceEntity));
-        Response response = RESOURCES.target(format("/v1/api/services/%s", serviceExternalId)).request().get();
+        Response response = RESOURCES.target().get(format("/v1/api/services/%s", serviceExternalId));
 
-        assertThat(response.getStatus(), is(200));
+        assertThat(response.statusCode(), is(200));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("name"), is(EN_SERVICE_NAME));
@@ -158,12 +155,12 @@ class ServiceResourceFindTest extends ServiceResourceBaseTest {
 
         given(mockedServiceDao.findByGatewayAccountId(gatewayAccountId)).willReturn(Optional.of(serviceEntity));
 
-        Response response = RESOURCES.target("/v1/api/services")
+        Response response = RESOURCES.target()
                 .queryParam("gatewayAccountId", gatewayAccountId)
-                .request().get();
-        assertThat(response.getStatus(), is(200));
+                .get("/v1/api/services");
+        assertThat(response.statusCode(), is(200));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("name"), is(serviceEntity.getServiceNames().get(SupportedLanguage.ENGLISH).getName()));
@@ -187,27 +184,27 @@ class ServiceResourceFindTest extends ServiceResourceBaseTest {
         String gatewayAccountId = randomUuid();
         given(mockedServiceDao.findByGatewayAccountId(gatewayAccountId)).willReturn(Optional.empty());
 
-        Response response = RESOURCES.target("/v1/api/services")
+        Response response = RESOURCES.target()
                 .queryParam("gatewayAccountId", gatewayAccountId)
-                .request().get();
-        assertThat(response.getStatus(), is(404));
+                .get("/v1/api/services");
+        assertThat(response.statusCode(), is(404));
     }
 
     @Test
     void shouldReturn404_whenGetServiceById_ifNotFound() {
         String externalId = randomUuid();
         given(mockedServiceDao.findByExternalId(externalId)).willReturn(Optional.empty());
-        Response response = RESOURCES.target(format("/v1/api/services/%s", externalId)).request().get();
-        assertThat(response.getStatus(), is(404));
+        Response response = RESOURCES.target().get(format("/v1/api/services/%s", externalId));
+        assertThat(response.statusCode(), is(404));
     }
 
     @Test
     void shouldReturnBadRequest_whenGetByGatewayAccountId_isMissingQueryParam() {
-        Response response = RESOURCES.target("/v1/api/services")
+        Response response = RESOURCES.target()
                 .queryParam("gatewayAccountId", "")
-                .request().get();
-        assertThat(response.getStatus(), is(400));
-        String body = response.readEntity(String.class);
+                .get("/v1/api/services");
+        assertThat(response.statusCode(), is(400));
+        String body = response.body().asString();
         JsonPath jsonPath = JsonPath.from(body);
         assertThat(jsonPath.getList("errors"), hasSize(1));
         assertThat(jsonPath.getList("errors").get(0), is("Find services currently support only by gatewayAccountId"));

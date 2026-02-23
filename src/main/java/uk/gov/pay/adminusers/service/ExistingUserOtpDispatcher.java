@@ -1,26 +1,24 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Provider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.model.SecondFactorToken;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
+import org.springframework.stereotype.Service;
 
-import jakarta.inject.Inject;
 
 import static uk.gov.pay.adminusers.service.NotificationService.OtpNotifySmsTemplateId.CHANGE_SIGN_IN_2FA_TO_SMS;
 import static uk.gov.pay.adminusers.service.NotificationService.OtpNotifySmsTemplateId.SIGN_IN;
 
+@Service
 public class ExistingUserOtpDispatcher {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExistingUserOtpDispatcher.class);
 
     private final NotificationService notificationService;
     private final SecondFactorAuthenticator secondFactorAuthenticator;
-
-    @Inject
-    public ExistingUserOtpDispatcher(Provider<NotificationService> notificationService, SecondFactorAuthenticator secondFactorAuthenticator) {
-        this.notificationService = notificationService.get();
+    public ExistingUserOtpDispatcher(NotificationService notificationService, SecondFactorAuthenticator secondFactorAuthenticator) {
+        this.notificationService = notificationService;
         this.secondFactorAuthenticator = secondFactorAuthenticator;
     }
 

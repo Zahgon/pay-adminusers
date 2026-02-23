@@ -11,8 +11,8 @@ import uk.gov.pay.adminusers.app.config.ConnectorTaskQueueConfig;
 import uk.gov.pay.adminusers.app.config.SqsConfig;
 import uk.gov.pay.adminusers.queue.model.ConnectorTask;
 import uk.gov.pay.adminusers.queue.model.ServiceArchivedTaskData;
-import uk.gov.service.payments.commons.queue.model.QueueMessage;
-import uk.gov.service.payments.commons.queue.sqs.SqsQueueService;
+import uk.gov.pay.adminusers.queue.sqs.QueueMessage;
+import uk.gov.pay.adminusers.queue.sqs.SqsQueueService;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;

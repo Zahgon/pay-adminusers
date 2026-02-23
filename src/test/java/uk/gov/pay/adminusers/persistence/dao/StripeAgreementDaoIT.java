@@ -33,8 +33,8 @@ public class StripeAgreementDaoIT extends DaoTestBase {
 
     @BeforeEach
     public void before() {
-        stripeAgreementDao = env.getInstance(StripeAgreementDao.class);
-        serviceDao = env.getInstance(ServiceDao.class);
+        stripeAgreementDao = env.getBean(StripeAgreementDao.class);
+        serviceDao = env.getBean(ServiceDao.class);
     }
 
     @Test

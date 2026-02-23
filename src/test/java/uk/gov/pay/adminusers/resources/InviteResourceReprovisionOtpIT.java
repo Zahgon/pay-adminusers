@@ -10,13 +10,13 @@ import uk.gov.pay.adminusers.persistence.dao.RoleDao;
 import java.util.Map;
 
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.lang.String.format;
 import static org.apache.commons.lang3.RandomStringUtils.random;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.OK;
 
 public class InviteResourceReprovisionOtpIT extends IntegrationTest {
 
@@ -28,7 +28,7 @@ public class InviteResourceReprovisionOtpIT extends IntegrationTest {
 
     @BeforeEach
     void givenAnExistingInvite() {
-        adminRole = getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        adminRole = getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
         code = InviteDbFixture.inviteDbFixture(databaseHelper)
                 .withEmail(EMAIL)
                 .withOtpKey(OTP_KEY)
@@ -43,7 +43,7 @@ public class InviteResourceReprovisionOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(format(INVITES_REPROVISION_OTP_RESOURCE_URL, ""))
                 .then()
-                .statusCode(BAD_REQUEST.getStatusCode());
+                .statusCode(BAD_REQUEST.value());
     }
     
     @Test
@@ -53,7 +53,7 @@ public class InviteResourceReprovisionOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(format(INVITES_REPROVISION_OTP_RESOURCE_URL, code))
                 .then()
-                .statusCode(OK.getStatusCode())
+                .statusCode(OK.value())
                 .body("otp_key", not(nullValue()))
                 .body("otp_key", not(OTP_KEY));
 

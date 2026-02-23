@@ -9,6 +9,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import uk.gov.pay.adminusers.model.PatchRequest;
 import uk.gov.pay.adminusers.model.Permission;
 import uk.gov.pay.adminusers.model.Role;
@@ -25,7 +27,6 @@ import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 import uk.gov.pay.adminusers.persistence.entity.service.ServiceNameEntity;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 
-import jakarta.ws.rs.WebApplicationException;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -68,8 +69,6 @@ public class UserServicesTest {
     @Mock
     private PasswordHasher mockPasswordHasher;
     @Mock
-    private NotificationService mockNotificationService;
-    @Mock
     private SecondFactorAuthenticator mockSecondFactorAuthenticator;
     @Captor
     private ArgumentCaptor<UserEntity> userEntityArgumentCaptor;
@@ -87,7 +86,9 @@ public class UserServicesTest {
 
     @BeforeEach
     void before() {
-        underTest = new UserServices(mockUserDao, mockPasswordHasher, new LinksBuilder("http://localhost"), 3, () -> mockNotificationService, mockSecondFactorAuthenticator, mock(ServiceFinder.class));
+        AdminUsersConfig configuration = new AdminUsersConfig();
+        configuration.setLoginAttemptCap(3);
+        underTest = new UserServices(mockUserDao, mockPasswordHasher, new LinksBuilder("http://localhost"), configuration, mockSecondFactorAuthenticator);
     }
 
     @Test
@@ -696,8 +697,8 @@ public class UserServicesTest {
         WebApplicationException exception = assertThrows(WebApplicationException.class, () -> underTest.resetSecondFactor(user.getExternalId()));
 
         String expectedError = format("Unable to reset second factor method to SMS as user [%s] does not have a telephone number set", user.getExternalId());
-        Map<String, String> response = (Map<String, String>) exception.getResponse().getEntity();
-        assertThat(exception.getResponse().getStatus(), is(412));
+        Map<String, String> response = (Map<String, String>) exception.getEntity();
+        assertThat(exception.getStatus().value(), is(412));
         assertThat(response, hasEntry("errors", List.of(expectedError)));
     }
 

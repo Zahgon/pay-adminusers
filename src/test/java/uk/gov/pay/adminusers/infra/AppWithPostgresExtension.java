@@ -1,147 +1,135 @@
 package uk.gov.pay.adminusers.infra;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.persist.PersistService;
-import com.google.inject.persist.jpa.JpaPersistModule;
-import io.dropwizard.db.DataSourceFactory;
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import liquibase.Liquibase;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.exception.LiquibaseException;
-import liquibase.resource.ClassLoaderResourceAccessor;
-import org.apache.commons.lang3.ArrayUtils;
-import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.context.WebServerApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
 import uk.gov.pay.adminusers.app.AdminUsersApp;
-import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
-import uk.gov.pay.adminusers.app.config.AdminUsersModule;
 import uk.gov.pay.adminusers.utils.DatabaseTestHelper;
-import uk.gov.service.payments.commons.testing.db.PostgresDockerExtension;
-import uk.gov.service.payments.commons.testing.db.PostgresTestHelper;
-import uk.gov.service.payments.commons.testing.port.PortFactory;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.ServerSocket;
 import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-import static io.dropwizard.testing.ConfigOverride.config;
-import static io.dropwizard.testing.ResourceHelpers.resourceFilePath;
+/**
+ * Runs the adminusers application on random ports against a fresh database of its own on the local PostgreSQL server
+ * (see {@link PostgresTestDatabase}), with the settings of the integration tests: ledger is expected on
+ * {@link #getWireMockPort()} unless overridden, the SQS queues on the {@link SqsTestServer}. The application starts
+ * before the tests of a class and stops after them, so test classes that share an instance each get an application
+ * and a database of their own.
+ */
+public class AppWithPostgresExtension implements BeforeAllCallback, AfterAllCallback {
 
-public class AppWithPostgresExtension implements BeforeAllCallback {
-    private static final Logger LOGGER = LoggerFactory.getLogger(AppWithPostgresExtension.class);
-    private static final String JPA_UNIT = "AdminUsersUnit";
-    private final PostgresDockerExtension postgres;
-    private final String configFilePath;
-    private final DropwizardAppExtension<AdminUsersConfig> app;
-    
-    private Injector injector;
+    private final String[] configOverrides;
+    private final int wireMockPort = findFreePort();
+
+    private SqsTestServer sqsTestServer;
+    private PostgresTestDatabase database;
+    private ConfigurableApplicationContext applicationContext;
     private DatabaseTestHelper databaseTestHelper;
 
-    private final int wireMockPort = PortFactory.findFreePort();
-
-    public AppWithPostgresExtension(ConfigOverride... configOverrides) {
-        this("config/test-it-config.yaml", configOverrides);
-    }
-
-    public AppWithPostgresExtension(String configPath, ConfigOverride... configOverrides) {
-        configFilePath = resourceFilePath(configPath);
-        postgres = new PostgresDockerExtension("15.2");
-        SqsTestDocker.initialise(Collections.singletonList("event-queue"));
-
-        ConfigOverride[] newConfigOverrides = List.of(
-                        config("database.url", postgres.getConnectionUrl()),
-                        config("database.user", postgres.getUsername()),
-                        config("database.password", postgres.getPassword()),
-                        config("sqs.connectorTasksQueueUrl", SqsTestDocker.getQueueUrl("event-queue")),
-                        config("sqs.endpoint", SqsTestDocker.getEndpoint()),
-                        config("ledgerBaseURL", "http://localhost:" + wireMockPort))
-                .toArray(new ConfigOverride[0]);
-
-        app = new DropwizardAppExtension<>(
-                AdminUsersApp.class,
-                configFilePath,
-                ArrayUtils.addAll(newConfigOverrides, configOverrides));
-
-        createJpaModule(postgres);
-        registerShutdownHook();
-
-        try {
-            // starts dropwizard application. This is required as we don't use DropwizardExtensionsSupport (which starts application)
-            // due to config overrides we need at runtime for database, sqs and any custom configuration needed for tests
-            app.before();
-        } catch (Exception e) {
-            LOGGER.error("Exception starting application - {}", e.getMessage());
-            throw new RuntimeException(e);
-        }
-    }
-
-    public synchronized Injector getInjector() {
-        if (injector == null) {
-            injector = Guice.createInjector(new AdminUsersModule(app.getConfiguration(), app.getEnvironment()));
-            injector.getInstance(PersistService.class).start();
-        }
-        return injector;
+    /**
+     * @param configOverrides settings that replace those of the integration tests, as pairs of Spring property name
+     *                        and value
+     */
+    public AppWithPostgresExtension(String... configOverrides) {
+        this.configOverrides = configOverrides;
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) throws Exception {
-        LOGGER.info("Clearing database.");
-        app.getApplication().run("db", "drop-all", "--confirm-delete-everything", configFilePath);
-        app.getApplication().run("migrateToInitialDbState", configFilePath);
-        doSecondaryDatabaseMigration();
-        restoreDropwizardsLogging();
+    public void beforeAll(ExtensionContext context) {
+        if (context.getRequiredTestClass().getEnclosingClass() != null) {
+            // a @Nested class runs with the application of its enclosing class
+            return;
+        }
+        sqsTestServer = SqsTestServer.start(Collections.singletonList("event-queue"));
+        database = PostgresTestDatabase.create();
+        database.migrateToInitialDbStateAndChangeLog();
+        databaseTestHelper = database.createDatabaseTestHelper();
 
-        DataSourceFactory dataSourceFactory = app.getConfiguration().getDataSourceFactory();
-        databaseTestHelper = new DatabaseTestHelper(Jdbi.create(dataSourceFactory.getUrl(),
-                dataSourceFactory.getUser(), dataSourceFactory.getPassword()));
+        Map<String, String> settings = testSettings(database);
+        settings.put("adminusers.sqs-config.connector-tasks-queue-url", sqsTestServer.getQueueUrl("event-queue"));
+        settings.put("adminusers.sqs-config.endpoint", sqsTestServer.getEndpoint());
+        settings.put("adminusers.ledger-base-url", "http://localhost:" + wireMockPort);
+        for (int i = 0; i + 1 < configOverrides.length; i += 2) {
+            settings.put(configOverrides[i], configOverrides[i + 1]);
+        }
+        applicationContext = start(settings);
     }
 
-    private void doSecondaryDatabaseMigration() throws SQLException, LiquibaseException {
-        try (Connection connection = DriverManager.getConnection(postgres.getConnectionUrl(), postgres.getUsername(), postgres.getPassword())) {
-            Liquibase migrator = new Liquibase("it-migrations.xml", new ClassLoaderResourceAccessor(), new JdbcConnection(connection));
-            migrator.update("");
+    @Override
+    public void afterAll(ExtensionContext context) {
+        if (context.getRequiredTestClass().getEnclosingClass() == null) {
+            applicationContext.close();
+            database.drop();
+            sqsTestServer.close();
         }
     }
 
+    public <T> T getBean(Class<T> beanClass) {
+        return applicationContext.getBean(beanClass);
+    }
+
     public int getLocalPort() {
-        return app.getLocalPort();
+        return ((WebServerApplicationContext) applicationContext).getWebServer().getPort();
     }
 
     public DatabaseTestHelper getDatabaseTestHelper() {
         return databaseTestHelper;
     }
 
-    private static void registerShutdownHook() {
-        Runtime.getRuntime().addShutdownHook(new Thread(PostgresTestHelper::stop));
-    }
-
-    private JpaPersistModule createJpaModule(final PostgresDockerExtension postgres) {
-        final Properties properties = new Properties();
-        properties.put("jakarta.persistence.jdbc.driver", postgres.getDriverClass());
-        properties.put("jakarta.persistence.jdbc.url", postgres.getConnectionUrl());
-        properties.put("jakarta.persistence.jdbc.user", postgres.getUsername());
-        properties.put("jakarta.persistence.jdbc.password", postgres.getPassword());
-
-        final JpaPersistModule jpaModule = new JpaPersistModule(JPA_UNIT);
-        jpaModule.properties(properties);
-
-        return jpaModule;
-    }
-
-    private void restoreDropwizardsLogging() {
-        app.getConfiguration().getLoggingFactory().configure(app.getEnvironment().metrics(),
-                app.getApplication().getName());
-    }
-
     public int getWireMockPort() {
         return wireMockPort;
+    }
+
+    /**
+     * The settings the integration tests run the application with, as their configuration file had them: the defaults
+     * of the service, with the SQS queues on a non-standard endpoint, the expunge and archive task enabled and short
+     * queue delays.
+     */
+    public static Map<String, String> testSettings(PostgresTestDatabase database) {
+        Map<String, String> settings = new LinkedHashMap<>();
+        settings.put("server.port", "0");
+        settings.put("management.server.port", "0");
+        settings.put("logging.level.root", "ERROR");
+        settings.put("spring.datasource.url", database.getJdbcUrl());
+        settings.put("spring.datasource.username", database.getUsername());
+        settings.put("spring.datasource.password", database.getPassword());
+        settings.put("adminusers.environment", "test");
+        settings.put("adminusers.sqs-config.non-standard-service-endpoint", "true");
+        settings.put("adminusers.sqs-config.endpoint", "http://localhost");
+        settings.put("adminusers.sqs-config.region", "region-1");
+        settings.put("adminusers.sqs-config.secret-key", "x");
+        settings.put("adminusers.sqs-config.access-key", "x");
+        settings.put("adminusers.sqs-config.event-subscriber-queue-url", "");
+        settings.put("adminusers.sqs-config.connector-tasks-queue-url", "");
+        settings.put("adminusers.event-subscriber-queue-config.queue-scheduler-thread-delay-in-milliseconds", "1");
+        settings.put("adminusers.expunge-and-archive-data-config.expunge-and-archive-historical-data-enabled", "true");
+        settings.put("adminusers.connector-task-queue-config.failed-message-retry-delay-in-seconds", "1");
+        settings.put("adminusers.ledger-base-url", "");
+        return settings;
+    }
+
+    static ConfigurableApplicationContext start(Map<String, String> settings) {
+        return new SpringApplicationBuilder(AdminUsersApp.class).run(toArguments(settings));
+    }
+
+    public static String[] toArguments(Map<String, String> settings) {
+        return settings.entrySet().stream()
+                .map(setting -> "--" + setting.getKey() + "=" + setting.getValue())
+                .toArray(String[]::new);
+    }
+
+    public static int findFreePort() {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

@@ -1,15 +1,21 @@
 package uk.gov.pay.adminusers.resources;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import java.io.IOException;
 
-public class InvalidEmailRequestExceptionMapper implements ExceptionMapper<InvalidEmailRequestException> {
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
-    @Override
-    public Response toResponse(InvalidEmailRequestException exception) {
-        return Response.status(BAD_REQUEST).build();
+@RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class InvalidEmailRequestExceptionMapper {
+
+    @ExceptionHandler(InvalidEmailRequestException.class)
+    public void toResponse(HttpServletResponse response) throws IOException {
+        response.sendError(BAD_REQUEST.value());
     }
-
 }

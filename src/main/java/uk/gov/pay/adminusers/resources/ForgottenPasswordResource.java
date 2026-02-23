@@ -1,7 +1,6 @@
 package uk.gov.pay.adminusers.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,22 +14,22 @@ import uk.gov.pay.adminusers.model.ForgottenPassword;
 import uk.gov.pay.adminusers.service.ForgottenPasswordServices;
 import uk.gov.pay.adminusers.utils.Errors;
 
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
 import java.util.Optional;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
+import uk.gov.pay.adminusers.web.JsonMediaTypes;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.OK;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
-@Path(ForgottenPasswordResource.FORGOTTEN_PASSWORDS_RESOURCE)
+@RestController
 @Tag(name = "Passwords")
 public class ForgottenPasswordResource {
 
@@ -41,15 +40,14 @@ public class ForgottenPasswordResource {
     private final ForgottenPasswordServices forgottenPasswordServices;
     private final ForgottenPasswordValidator validator;
 
-    @Inject
-    public ForgottenPasswordResource(ForgottenPasswordServices forgottenPasswordServices) {
+    public ForgottenPasswordResource(ForgottenPasswordServices forgottenPasswordServices,
+                                     ForgottenPasswordValidator validator) {
         this.forgottenPasswordServices = forgottenPasswordServices;
-        validator = new ForgottenPasswordValidator();
+        this.validator = validator;
     }
 
-    @POST
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @PostMapping(FORGOTTEN_PASSWORDS_RESOURCE)
+    @JsonMediaTypes(consumes = true)
     @Operation(
             summary = "Create a new forgotten password request (sends email to user)",
             requestBody = @RequestBody(content = @Content(schema = @Schema(requiredProperties = {"username"},
@@ -62,21 +60,20 @@ public class ForgottenPasswordResource {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
-    public Response sendForgottenPassword(JsonNode payload) {
+    public ResponseEntity<?> sendForgottenPassword(@org.springframework.web.bind.annotation.RequestBody(required = false) JsonNode payload) {
         LOGGER.info("ForgottenPassword CREATE request");
         Optional<Errors> errorsOptional = validator.validateCreateRequest(payload);
         return errorsOptional
-                .map(errors ->
-                        Response.status(BAD_REQUEST).type(APPLICATION_JSON).entity(errors).build())
+                .<ResponseEntity<?>>map(errors ->
+                        ResponseEntity.status(BAD_REQUEST).contentType(APPLICATION_JSON).body(errors))
                 .orElseGet(() -> {
                     forgottenPasswordServices.create(payload.get("username").asText());
-                    return Response.status(OK).build();
+                    return ResponseEntity.status(OK).build();
                 });
     }
 
-    @Path("/{code}")
-    @GET
-    @Produces(APPLICATION_JSON)
+    @GetMapping(FORGOTTEN_PASSWORDS_RESOURCE + "/{code}")
+    @JsonMediaTypes
     @Operation(
             summary = "Verify forgotten password code",
             responses = {
@@ -85,13 +82,13 @@ public class ForgottenPasswordResource {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
-    public Response findNonExpiredForgottenPassword(@Parameter(example = "bc9039e00cba4e63b2c92ecd0e188aba") @PathParam("code") String code) {
+    public ResponseEntity<?> findNonExpiredForgottenPassword(@Parameter(example = "bc9039e00cba4e63b2c92ecd0e188aba") @PathVariable("code") String code) {
         LOGGER.info("ForgottenPassword GET request");
         if (isNotBlank(code) && code.length() > MAX_LENGTH) {
-            return Response.status(NOT_FOUND).build();
+            throw new ResponseStatusException(NOT_FOUND);
         }
         return forgottenPasswordServices.findNonExpired(code)
-                .map(forgottenPassword -> Response.status(OK).type(APPLICATION_JSON).entity(forgottenPassword).build())
-                .orElseGet(() -> Response.status(NOT_FOUND).build());
+                .map(forgottenPassword -> ResponseEntity.status(OK).contentType(APPLICATION_JSON).body(forgottenPassword))
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
     }
 }

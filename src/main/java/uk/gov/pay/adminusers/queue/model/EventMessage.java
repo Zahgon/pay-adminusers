@@ -1,6 +1,6 @@
 package uk.gov.pay.adminusers.queue.model;
 
-import uk.gov.service.payments.commons.queue.model.QueueMessage;
+import uk.gov.pay.adminusers.queue.sqs.QueueMessage;
 
 public class EventMessage {
     private Event event;

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import uk.gov.pay.adminusers.exception.ServiceNotFoundException;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import uk.gov.pay.adminusers.expungeandarchive.service.ExpungeAndArchiveHistoricalDataService;
 import uk.gov.pay.adminusers.model.GoLiveStage;
 import uk.gov.pay.adminusers.model.PspTestAccountStage;
@@ -17,7 +18,6 @@ import uk.gov.pay.adminusers.persistence.entity.ServiceEntity;
 import uk.gov.pay.adminusers.persistence.entity.service.ServiceNameEntity;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 
-import jakarta.ws.rs.WebApplicationException;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;

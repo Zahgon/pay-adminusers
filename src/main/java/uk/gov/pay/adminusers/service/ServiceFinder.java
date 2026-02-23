@@ -1,6 +1,5 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
 import uk.gov.pay.adminusers.model.SearchServicesResponse;
 import uk.gov.pay.adminusers.model.Service;
 import uk.gov.pay.adminusers.model.ServiceSearchRequest;
@@ -12,15 +11,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Component;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
+@Component
 public class ServiceFinder {
 
     private final ServiceDao serviceDao;
     private final LinksBuilder linksBuilder;
-
-    @Inject
     public ServiceFinder(ServiceDao serviceDao, LinksBuilder linksBuilder) {
         this.serviceDao = serviceDao;
         this.linksBuilder = linksBuilder;

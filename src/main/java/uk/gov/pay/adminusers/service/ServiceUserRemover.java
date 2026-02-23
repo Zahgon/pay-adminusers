@@ -6,12 +6,13 @@ import uk.gov.pay.adminusers.persistence.dao.ServiceRoleDao;
 import uk.gov.pay.adminusers.persistence.dao.UserDao;
 import uk.gov.pay.adminusers.persistence.entity.ServiceRoleEntity;
 
-import jakarta.inject.Inject;
 import java.util.Optional;
 import java.util.function.Predicate;
+import org.springframework.stereotype.Service;
 
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.forbiddenOperationException;
 
+@Service
 public class ServiceUserRemover {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServiceUserRemover.class);
@@ -19,8 +20,6 @@ public class ServiceUserRemover {
 
     private final UserDao userDao;
     private final ServiceRoleDao serviceRoleDao;
-
-    @Inject
     public ServiceUserRemover(UserDao userDao, ServiceRoleDao serviceRoleDao) {
         this.userDao = userDao;
         this.serviceRoleDao = serviceRoleDao;

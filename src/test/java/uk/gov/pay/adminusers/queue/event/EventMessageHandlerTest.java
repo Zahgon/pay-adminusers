@@ -24,11 +24,11 @@ import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 import uk.gov.pay.adminusers.queue.model.Event;
 import uk.gov.pay.adminusers.queue.model.EventMessage;
 import uk.gov.pay.adminusers.queue.model.EventType;
+import uk.gov.pay.adminusers.queue.sqs.QueueException;
+import uk.gov.pay.adminusers.queue.sqs.QueueMessage;
 import uk.gov.pay.adminusers.service.NotificationService;
 import uk.gov.pay.adminusers.service.ServiceFinder;
 import uk.gov.pay.adminusers.service.UserServices;
-import uk.gov.service.payments.commons.queue.exception.QueueException;
-import uk.gov.service.payments.commons.queue.model.QueueMessage;
 
 import java.time.Instant;
 import java.util.Arrays;

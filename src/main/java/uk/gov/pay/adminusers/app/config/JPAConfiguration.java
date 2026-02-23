@@ -1,9 +1,6 @@
 package uk.gov.pay.adminusers.app.config;
 
-
-import io.dropwizard.core.Configuration;
-
-public class JPAConfiguration extends Configuration {
+public class JPAConfiguration {
 
     private String jpaLoggingLevel;
     private String sqlLoggingLevel;
@@ -29,5 +26,25 @@ public class JPAConfiguration extends Configuration {
 
     public String getCacheSharedDefault() {
         return cacheSharedDefault;
+    }
+
+    public void setJpaLoggingLevel(String jpaLoggingLevel) {
+        this.jpaLoggingLevel = jpaLoggingLevel;
+    }
+
+    public void setSqlLoggingLevel(String sqlLoggingLevel) {
+        this.sqlLoggingLevel = sqlLoggingLevel;
+    }
+
+    public void setDdlGenerationOutputMode(String ddlGenerationOutputMode) {
+        this.ddlGenerationOutputMode = ddlGenerationOutputMode;
+    }
+
+    public void setQueryResultsCache(String queryResultsCache) {
+        this.queryResultsCache = queryResultsCache;
+    }
+
+    public void setCacheSharedDefault(String cacheSharedDefault) {
+        this.cacheSharedDefault = cacheSharedDefault;
     }
 }

@@ -1,6 +1,5 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import com.warrenstrange.googleauth.GoogleAuthenticatorConfig;
 import org.slf4j.Logger;
@@ -9,10 +8,12 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.time.InstantSource;
 import java.util.regex.Pattern;
+import org.springframework.stereotype.Service;
 
 import static com.google.common.io.BaseEncoding.base32;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
+@Service
 public class SecondFactorAuthenticator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecondFactorAuthenticator.class);
@@ -21,8 +22,6 @@ public class SecondFactorAuthenticator {
 
     private final GoogleAuthenticator authenticator;
     private final InstantSource instantSource;
-
-    @Inject
     public SecondFactorAuthenticator(GoogleAuthenticatorConfig authenticatorConfig, InstantSource instantSource) {
         this.instantSource = instantSource;
         this.authenticator = new GoogleAuthenticator(authenticatorConfig);

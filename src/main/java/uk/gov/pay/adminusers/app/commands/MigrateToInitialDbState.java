@@ -1,34 +1,38 @@
-package uk.gov.pay.adminusers.app.healthchecks;
+package uk.gov.pay.adminusers.app.commands;
 
-
-import io.dropwizard.core.cli.ConfiguredCommand;
-import io.dropwizard.core.setup.Bootstrap;
 import liquibase.Liquibase;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
 import liquibase.resource.ClassLoaderResourceAccessor;
-import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.context.annotation.Import;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class MigrateToInitialDbState extends ConfiguredCommand<AdminUsersConfig> {
+/**
+ * The {@code migrateToInitialDbState} command: migrates to the initial (selfservice) database state, if necessary.
+ */
+@Import(CommandConfiguration.class)
+public class MigrateToInitialDbState implements ApplicationRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MigrateToInitialDbState.class);
 
-    public MigrateToInitialDbState() {
-        super("migrateToInitialDbState", "Migrate to initial (selfservice) database state, if necessary");
+    private final DataSourceProperties dataSourceProperties;
+
+    public MigrateToInitialDbState(DataSourceProperties dataSourceProperties) {
+        this.dataSourceProperties = dataSourceProperties;
     }
 
     @Override
-    protected void run(Bootstrap<AdminUsersConfig> bootstrap, Namespace namespace, AdminUsersConfig configuration) {
-        try (Connection connection = getDatabaseConnection(configuration);
+    public void run(ApplicationArguments args) {
+        try (Connection connection = DatabaseConnections.open(dataSourceProperties);
              PreparedStatement statement = connection.prepareStatement("select exists (select * from pg_tables where tablename='users')");
              ResultSet resultSet = statement.executeQuery()) {
             if (resultSet.next()) {
@@ -54,12 +58,5 @@ public class MigrateToInitialDbState extends ConfiguredCommand<AdminUsersConfig>
             LOGGER.error("Error performing liquibase initial database migration", e);
             throw new RuntimeException(e);
         }
-    }
-
-    private Connection getDatabaseConnection(AdminUsersConfig configuration) throws SQLException {
-        return DriverManager.getConnection(
-                configuration.getDataSourceFactory().getUrl(),
-                configuration.getDataSourceFactory().getUser(),
-                configuration.getDataSourceFactory().getPassword());
     }
 }

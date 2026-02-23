@@ -1,26 +1,30 @@
 package uk.gov.pay.adminusers.pact.queuemessage;
 
 import au.com.dius.pact.consumer.MessagePactBuilder;
-import au.com.dius.pact.consumer.junit.MessagePactProviderRule;
-import au.com.dius.pact.consumer.junit.PactVerification;
+import au.com.dius.pact.consumer.junit5.PactConsumerTestExt;
+import au.com.dius.pact.consumer.junit5.PactTestFor;
+import au.com.dius.pact.consumer.junit5.ProviderType;
+import au.com.dius.pact.core.model.PactSpecVersion;
 import au.com.dius.pact.core.model.annotations.Pact;
+import au.com.dius.pact.core.model.messaging.Message;
 import au.com.dius.pact.core.model.messaging.MessagePact;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import com.google.gson.GsonBuilder;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import uk.gov.pay.adminusers.client.ledger.model.LedgerTransaction;
 import uk.gov.pay.adminusers.fixtures.EventFixture;
 import uk.gov.pay.adminusers.fixtures.ServiceDbFixture;
-import uk.gov.pay.adminusers.infra.AppWithPostgresAndSqsRule;
+import uk.gov.pay.adminusers.infra.AppWithPostgresAndSqsExtension;
 import uk.gov.pay.adminusers.infra.LedgerStub;
 import uk.gov.pay.adminusers.infra.NotifyStub;
-import uk.gov.pay.adminusers.infra.SqsTestDocker;
 import uk.gov.pay.adminusers.model.MerchantDetails;
 import uk.gov.pay.adminusers.model.Role;
 import uk.gov.pay.adminusers.model.RoleName;
@@ -28,6 +32,7 @@ import uk.gov.pay.adminusers.model.Service;
 import uk.gov.pay.adminusers.persistence.dao.RoleDao;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -36,25 +41,22 @@ import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
-import static io.dropwizard.testing.ConfigOverride.config;
-import static jakarta.ws.rs.core.HttpHeaders.CONTENT_TYPE;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.await;
+import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static uk.gov.pay.adminusers.fixtures.EventFixture.anEventFixture;
 import static uk.gov.pay.adminusers.fixtures.LedgerTransactionFixture.aLedgerTransactionFixture;
 import static uk.gov.pay.adminusers.fixtures.UserDbFixture.userDbFixture;
 
+@ExtendWith(PactConsumerTestExt.class)
+@PactTestFor(providerName = "connector", providerType = ProviderType.ASYNCH, pactVersion = PactSpecVersion.V3)
 public class DisputeCreatedEventQueueConsumerIT {
     
-    @Rule
-    public MessagePactProviderRule mockProvider = new MessagePactProviderRule(this);
+    @RegisterExtension
+    public AppWithPostgresAndSqsExtension adminusersApp = new AppWithPostgresAndSqsExtension(
+            "adminusers.event-subscriber-queue-config.event-subscriber-queue-enabled", "true");
 
-    @Rule
-    public AppWithPostgresAndSqsRule adminusersApp = new AppWithPostgresAndSqsRule(
-            config("eventSubscriberQueue.eventSubscriberQueueEnabled", "true"));
-
-    @Rule
-    public WireMockRule wireMockRule = new WireMockRule(options().port(adminusersApp.getWireMockPort()));
+    public WireMockServer wireMockRule = new WireMockServer(options().port(adminusersApp.getWireMockPort()));
     
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -103,8 +105,9 @@ public class DisputeCreatedEventQueueConsumerIT {
                 .toPact();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
+        wireMockRule.start();
         adminusersApp.getDatabaseTestHelper().truncateAllData();
         
         ledgerStub = new LedgerStub(wireMockRule);
@@ -119,7 +122,7 @@ public class DisputeCreatedEventQueueConsumerIT {
                         "https://merchant.example.org"
                 ))
                 .insertService();
-        Role adminRole = adminusersApp.getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        Role adminRole = adminusersApp.getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
         userDbFixture(adminusersApp.getDatabaseTestHelper())
                 .withEmail(adminUserEmail)
                 .withServiceRole(service.getId(), adminRole)
@@ -133,13 +136,19 @@ public class DisputeCreatedEventQueueConsumerIT {
         notifyStub.stubSendEmail();
     }
 
+    @AfterEach
+    public void tearDown() {
+        wireMockRule.stop();
+    }
+
     @Test
-    @PactVerification({"connector"})
-    public void test() throws Exception {
+    @PactTestFor(pactMethod = "createDisputeCreatedEventPact")
+    public void test(List<Message> messages) throws Exception {
+        setMessage(messages.get(0).contentsAsBytes());
         String messageContents = new String(currentMessage);
         String snsMessage = new GsonBuilder().create().toJson(Map.of("Message", messageContents));
         SendMessageRequest messageRequest = SendMessageRequest.builder()
-                .queueUrl(SqsTestDocker.getQueueUrl("event-queue"))
+                .queueUrl(adminusersApp.getQueueUrl("event-queue"))
                 .messageBody(snsMessage)
                 .build();
         adminusersApp.getSqsClient().sendMessage(messageRequest);
@@ -147,7 +156,7 @@ public class DisputeCreatedEventQueueConsumerIT {
                 () -> !wireMockRule.findAll(RequestPatternBuilder.newRequestPattern().withUrl("/v2/notifications/email")).isEmpty());
         
         wireMockRule.verify(1, postRequestedFor(urlPathEqualTo( "/v2/notifications/email"))
-                .withHeader(CONTENT_TYPE, equalTo(APPLICATION_JSON))
+                .withHeader(CONTENT_TYPE, equalTo(APPLICATION_JSON_VALUE))
                 .withRequestBody(matchingJsonPath("$.email_address", equalTo(adminUserEmail)))
                 .withRequestBody(matchingJsonPath("$.template_id", equalTo("pay-notify-stripe-dispute-created-email-template-id")))
                 .withRequestBody(matchingJsonPath("$.email_reply_to_id", equalTo("pay-notify-email-reply-to-support-id")))

@@ -1,18 +1,21 @@
 package uk.gov.pay.adminusers.queue.managed;
 
-import io.dropwizard.core.setup.Environment;
-import io.dropwizard.lifecycle.Managed;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.SmartLifecycle;
 import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
 import uk.gov.pay.adminusers.app.config.EventSubscriberQueueConfig;
 import uk.gov.pay.adminusers.queue.event.EventMessageHandler;
 
-import jakarta.inject.Inject;
+import org.springframework.stereotype.Component;
+
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class EventSubscriberQueueMessageReceiver implements Managed {
+@Component
+public class EventSubscriberQueueMessageReceiver implements SmartLifecycle {
 
     private static final String THREAD_NAME = "sqs-message-eventSubscriberQueueMessageReceiver";
     private static final int SCHEDULER_NUMBER_OF_THREADS = 1;
@@ -25,17 +28,14 @@ public class EventSubscriberQueueMessageReceiver implements Managed {
     private final int queueSchedulerThreadDelayInMilliseconds;
     private final int queueSchedulerShutdownTimeoutInSeconds;
     private boolean queueEnabled;
+    private volatile boolean running;
 
-    @Inject
-    public EventSubscriberQueueMessageReceiver(EventMessageHandler eventMessageHandler, Environment environment,
+    public EventSubscriberQueueMessageReceiver(EventMessageHandler eventMessageHandler,
                                                AdminUsersConfig adminUsersConfig) {
         this.eventMessageHandler = eventMessageHandler;
 
-        scheduledExecutorService = environment
-                .lifecycle()
-                .scheduledExecutorService(THREAD_NAME)
-                .threads(SCHEDULER_NUMBER_OF_THREADS)
-                .build();
+        scheduledExecutorService = Executors.newScheduledThreadPool(SCHEDULER_NUMBER_OF_THREADS,
+                new ThreadFactoryBuilder().setNameFormat(THREAD_NAME + "-%d").build());
 
         EventSubscriberQueueConfig eventSubscriberQueueConfig = adminUsersConfig.getEventSubscriberQueueConfig();
         queueEnabled = eventSubscriberQueueConfig.getEventSubscriberQueueEnabled();
@@ -45,6 +45,7 @@ public class EventSubscriberQueueMessageReceiver implements Managed {
 
     @Override
     public void start() {
+        running = true;
         if (queueEnabled) {
             int initialDelay = queueSchedulerThreadDelayInMilliseconds;
             scheduledExecutorService.scheduleWithFixedDelay(
@@ -65,7 +66,13 @@ public class EventSubscriberQueueMessageReceiver implements Managed {
     }
 
     @Override
+    public boolean isRunning() {
+        return running;
+    }
+
+    @Override
     public void stop() {
+        running = false;
         logger.info("Shutting down event subscriber queue message receiver");
         scheduledExecutorService.shutdown();
         try {

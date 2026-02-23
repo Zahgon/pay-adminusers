@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import uk.gov.pay.adminusers.model.Role;
 import uk.gov.pay.adminusers.model.RoleName;
 import uk.gov.pay.adminusers.model.SecondFactorMethod;
@@ -19,7 +20,6 @@ import uk.gov.pay.adminusers.persistence.entity.ServiceEntity;
 import uk.gov.pay.adminusers.persistence.entity.ServiceRoleEntity;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 
-import jakarta.ws.rs.WebApplicationException;
 import java.util.Optional;
 
 import static java.util.Collections.emptyList;

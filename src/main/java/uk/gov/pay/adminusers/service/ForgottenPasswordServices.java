@@ -1,6 +1,5 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
@@ -12,11 +11,13 @@ import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 import static java.lang.String.format;
-import static jakarta.ws.rs.core.UriBuilder.fromUri;
+import static uk.gov.pay.adminusers.utils.UriPaths.append;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 
+@Service
 public class ForgottenPasswordServices {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ForgottenPasswordServices.class);
@@ -27,8 +28,6 @@ public class ForgottenPasswordServices {
     private final LinksBuilder linksBuilder;
     private final NotificationService notificationService;
     private final String selfserviceBaseUrl;
-
-    @Inject
     public ForgottenPasswordServices(UserDao userDao, ForgottenPasswordDao forgottenPasswordDao, LinksBuilder linksBuilder, NotificationService notificationService, AdminUsersConfig config) {
         this.userDao = userDao;
         this.forgottenPasswordDao = forgottenPasswordDao;
@@ -43,7 +42,7 @@ public class ForgottenPasswordServices {
             UserEntity userEntity = userOptional.get();
             ForgottenPasswordEntity forgottenPasswordEntity = new ForgottenPasswordEntity(randomUuid(), ZonedDateTime.now(), userEntity);
             forgottenPasswordDao.persist(forgottenPasswordEntity);
-            String forgottenPasswordUrl = fromUri(selfserviceBaseUrl).path(SELFSERVICE_FORGOTTEN_PASSWORD_PATH).path(forgottenPasswordEntity.getCode()).build().toString();
+            String forgottenPasswordUrl = append(selfserviceBaseUrl, SELFSERVICE_FORGOTTEN_PASSWORD_PATH, forgottenPasswordEntity.getCode());
             
             try {
                 String notificationId = notificationService.sendForgottenPasswordEmail(userEntity.getEmail(), forgottenPasswordUrl);

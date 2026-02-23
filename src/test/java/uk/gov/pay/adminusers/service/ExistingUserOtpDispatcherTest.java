@@ -5,13 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import uk.gov.pay.adminusers.model.SecondFactorMethod;
 import uk.gov.pay.adminusers.model.SecondFactorToken;
 import uk.gov.pay.adminusers.model.User;
 import uk.gov.pay.adminusers.persistence.dao.UserDao;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 
-import jakarta.ws.rs.WebApplicationException;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +49,7 @@ class ExistingUserOtpDispatcherTest {
 
     @BeforeEach
     void before() {
-        existingUserOtpDispatcher = new ExistingUserOtpDispatcher(() -> notificationService, secondFactorAuthenticator);
+        existingUserOtpDispatcher = new ExistingUserOtpDispatcher(notificationService, secondFactorAuthenticator);
     }
 
     @Test
@@ -73,8 +73,8 @@ class ExistingUserOtpDispatcherTest {
         WebApplicationException exception = assertThrows(WebApplicationException.class, () -> existingUserOtpDispatcher.sendSignInOtp(userEntity));
 
         String expectedError = format("Unable to send second factor code as user [%s] does not have a telephone number set", user.getExternalId());
-        Map<String, String> response = (Map<String, String>) exception.getResponse().getEntity();
-        assertThat(exception.getResponse().getStatus(), is(412));
+        Map<String, String> response = (Map<String, String>) exception.getEntity();
+        assertThat(exception.getStatus().value(), is(412));
         assertThat(response, hasEntry("errors", List.of(expectedError)));
     }
 
@@ -141,8 +141,8 @@ class ExistingUserOtpDispatcherTest {
         WebApplicationException exception = assertThrows(WebApplicationException.class, () -> existingUserOtpDispatcher.sendChangeSignMethodToSmsOtp(userEntity));
 
         String expectedError = format("Attempted to send a 2FA token attempted for user without an OTP key [%s]", user.getExternalId());
-        Map<String, String> response = (Map<String, String>) exception.getResponse().getEntity();
-        assertThat(exception.getResponse().getStatus(), is(400));
+        Map<String, String> response = (Map<String, String>) exception.getEntity();
+        assertThat(exception.getStatus().value(), is(400));
         assertThat(response, hasEntry("errors", List.of(expectedError)));
     }
 

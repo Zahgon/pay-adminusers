@@ -32,7 +32,7 @@ public class ToolboxEndpointResourceIT extends IntegrationTest {
     
     @BeforeEach
     public void setup() {
-        viewRole = getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.VIEW_ONLY).get().toRole();
+        viewRole = getBean(RoleDao.class).findByRoleName(RoleName.VIEW_ONLY).get().toRole();
         
         Service service = serviceDbFixture(databaseHelper).insertService();
         serviceExternalId = service.getExternalId();

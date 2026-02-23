@@ -1,8 +1,6 @@
 package uk.gov.pay.adminusers.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.inject.Inject;
-import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -31,7 +29,10 @@ import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 import uk.gov.pay.adminusers.service.GovUkPayAgreementService;
 import uk.gov.pay.adminusers.service.LinksBuilder;
 import uk.gov.pay.adminusers.service.SendLiveAccountCreatedEmailService;
-import uk.gov.pay.adminusers.service.ServiceServicesFactory;
+import uk.gov.pay.adminusers.service.ServiceCreator;
+import uk.gov.pay.adminusers.service.ServiceFinder;
+import uk.gov.pay.adminusers.service.ServiceUpdater;
+import uk.gov.pay.adminusers.service.ServiceUserRemover;
 import uk.gov.pay.adminusers.service.StripeAgreementService;
 import uk.gov.pay.adminusers.utils.Errors;
 import uk.gov.service.payments.commons.api.exception.ValidationException;
@@ -39,18 +40,7 @@ import uk.gov.service.payments.commons.model.SupportedLanguage;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.HeaderParam;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.ZoneOffset;
@@ -58,19 +48,31 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
+import uk.gov.pay.adminusers.web.JsonMediaTypes;
 
 import static java.util.stream.Collectors.toUnmodifiableList;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.Status;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.CONFLICT;
-import static jakarta.ws.rs.core.Response.Status.CREATED;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.NO_CONTENT;
-import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.springframework.http.HttpStatus.OK;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
-@Path("/v1/api/services")
+@RestController
 public class ServiceResource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResource.class);
@@ -82,18 +84,22 @@ public class ServiceResource {
     private final ServiceDao serviceDao;
     private final LinksBuilder linksBuilder;
     private final ServiceRequestValidator serviceRequestValidator;
-    private final ServiceServicesFactory serviceServicesFactory;
+    private final ServiceCreator serviceCreator;
+    private final ServiceUpdater serviceUpdater;
+    private final ServiceUserRemover serviceUserRemover;
+    private final ServiceFinder serviceFinder;
     private final StripeAgreementService stripeAgreementService;
     private final GovUkPayAgreementRequestValidator govUkPayAgreementRequestValidator;
     private final GovUkPayAgreementService govUkPayAgreementService;
     private final SendLiveAccountCreatedEmailService sendLiveAccountCreatedEmailService;
-
-    @Inject
     public ServiceResource(UserDao userDao,
                            ServiceDao serviceDao,
                            LinksBuilder linksBuilder,
                            ServiceRequestValidator serviceRequestValidator,
-                           ServiceServicesFactory serviceServicesFactory,
+                           ServiceCreator serviceCreator,
+                           ServiceUpdater serviceUpdater,
+                           ServiceUserRemover serviceUserRemover,
+                           ServiceFinder serviceFinder,
                            StripeAgreementService stripeAgreementService,
                            GovUkPayAgreementRequestValidator govUkPayAgreementRequestValidator,
                            GovUkPayAgreementService govUkPayAgreementService,
@@ -102,16 +108,18 @@ public class ServiceResource {
         this.serviceDao = serviceDao;
         this.linksBuilder = linksBuilder;
         this.serviceRequestValidator = serviceRequestValidator;
-        this.serviceServicesFactory = serviceServicesFactory;
+        this.serviceCreator = serviceCreator;
+        this.serviceUpdater = serviceUpdater;
+        this.serviceUserRemover = serviceUserRemover;
+        this.serviceFinder = serviceFinder;
         this.stripeAgreementService = stripeAgreementService;
         this.govUkPayAgreementRequestValidator = govUkPayAgreementRequestValidator;
         this.govUkPayAgreementService = govUkPayAgreementService;
         this.sendLiveAccountCreatedEmailService = sendLiveAccountCreatedEmailService;
     }
 
-    @GET
-    @Path("/list")
-    @Produces(APPLICATION_JSON)
+    @GetMapping("/v1/api/services/list")
+    @JsonMediaTypes
     @Operation(
             summary = "Get all services",
             tags = "Services",
@@ -120,18 +128,16 @@ public class ServiceResource {
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = Service.class))))
             }
     )
-    public Response getServices() {
+    public ResponseEntity<?> getServices() {
         LOGGER.info("Get Services request");
         List<Service> services = serviceDao.listAll().stream().map(ServiceEntity::toService).map(linksBuilder::decorate).collect(toUnmodifiableList());
-        return Response
+        return ResponseEntity
                 .status(OK)
-                .entity(services)
-                .build();
+                .body(services);
     }
 
-    @GET
-    @Path("/{serviceExternalId}")
-    @Produces(APPLICATION_JSON)
+    @GetMapping("/v1/api/services/{serviceExternalId}")
+    @JsonMediaTypes
     @Operation(
             tags = "Services",
             summary = "Find service by external ID",
@@ -141,17 +147,17 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
-    public Response findService(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3") @PathParam("serviceExternalId")
+    public ResponseEntity<?> findService(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3") @PathVariable("serviceExternalId")
                                 String serviceExternalId) {
         return serviceDao.findByExternalId(serviceExternalId)
                 .map(serviceEntity ->
-                        Response.status(OK).entity(linksBuilder.decorate(serviceEntity.toService())).build())
-                .orElseGet(() ->
-                        Response.status(NOT_FOUND).build());
+                        ResponseEntity.status(OK).body(linksBuilder.decorate(serviceEntity.toService())))
+                .orElseThrow(() ->
+                        new ResponseStatusException(NOT_FOUND));
     }
 
-    @GET
-    @Produces(APPLICATION_JSON)
+    @GetMapping("/v1/api/services")
+    @JsonMediaTypes
     @Operation(
             tags = "Services",
             summary = "Find service associated with gateway account ID",
@@ -162,18 +168,16 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "404", description = "Not found"),
             }
     )
-    public Response findServices(@Parameter(example = "1") @QueryParam("gatewayAccountId") String gatewayAccountId) {
+    public ResponseEntity<?> findServices(@Parameter(example = "1") @RequestParam(value = "gatewayAccountId", required = false) String gatewayAccountId) {
         return serviceRequestValidator.validateFindRequest(gatewayAccountId)
-                .map(errors -> Response.status(BAD_REQUEST).entity(errors).build())
-                .orElseGet(() -> serviceServicesFactory.serviceFinder().byGatewayAccountId(gatewayAccountId)
-                        .map(service -> Response.status(OK).entity(service).build())
-                        .orElseGet(() -> Response.status(NOT_FOUND).build()));
+                .<ResponseEntity<?>>map(errors -> ResponseEntity.status(BAD_REQUEST).body(errors))
+                .orElseGet(() -> serviceFinder.byGatewayAccountId(gatewayAccountId)
+                        .<ResponseEntity<?>>map(service -> ResponseEntity.status(OK).body(service))
+                        .orElseThrow(() -> new ResponseStatusException(NOT_FOUND)));
     }
 
-    @POST
-    @Path("/search")
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @PostMapping("/v1/api/services/search")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = "Services",
             summary = "Search services by name or merchant name",
@@ -190,21 +194,19 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "400", description = "Invalid JSON payload")
             }
     )
-    public Response searchServices(JsonNode payload) {
+    public ResponseEntity<?> searchServices(@org.springframework.web.bind.annotation.RequestBody(required = false) JsonNode payload) {
         LOGGER.info("Search services request = [ {} ]", payload);
         var searchRequest = ServiceSearchRequest.from(payload);
         return serviceRequestValidator.validateSearchRequest(searchRequest)
-                .map(errors -> Response.status(BAD_REQUEST).entity(errors).build())
-                .orElseGet(() -> Response
+                .<ResponseEntity<?>>map(errors -> ResponseEntity.status(BAD_REQUEST).body(errors))
+                .orElseGet(() -> ResponseEntity
                         .status(OK)
-                        .entity(serviceServicesFactory.serviceFinder().bySearchRequest(searchRequest))
-                        .build()
+                        .body(serviceFinder.bySearchRequest(searchRequest))
                 );
     }
 
-    @POST
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @PostMapping("/v1/api/services")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = "Services",
             summary = "Create new service",
@@ -226,20 +228,18 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "500", description = "Invalid JSON payload")
             }
     )
-    public Response createService(@Valid CreateServiceRequest createServiceRequest) {
+    public ResponseEntity<?> createService(@org.springframework.web.bind.annotation.RequestBody(required = false) @Valid CreateServiceRequest createServiceRequest) {
         LOGGER.info("Create Service POST request - [ {} ]", createServiceRequest);
 
         List<String> gatewayAccountIds = Optional.ofNullable(createServiceRequest).map(CreateServiceRequest::gatewayAccountIds).orElse(List.of());
         Map<SupportedLanguage, String> serviceNames = Optional.ofNullable(createServiceRequest).map(CreateServiceRequest::serviceName).orElse(Map.of());
-        Service service = serviceServicesFactory.serviceCreator().doCreate(gatewayAccountIds, serviceNames);
-        return Response.status(CREATED).entity(service).build();
+        Service service = serviceCreator.doCreate(gatewayAccountIds, serviceNames);
+        return ResponseEntity.status(CREATED).body(service);
 
     }
 
-    @Path("/{serviceExternalId}")
-    @PATCH
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @PatchMapping("/v1/api/services/{serviceExternalId}")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = "Services",
             summary = "Patch service attributes",
@@ -284,26 +284,24 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "400", description = "Invalid payload")
             }
     )
-    public Response updateServiceAttribute(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
-                                           @PathParam("serviceExternalId") String serviceExternalId,
-                                           JsonNode payload) {
+    public ResponseEntity<?> updateServiceAttribute(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
+                                           @PathVariable("serviceExternalId") String serviceExternalId,
+                                           @org.springframework.web.bind.annotation.RequestBody(required = false) JsonNode payload) {
         return serviceRequestValidator.validateUpdateAttributeRequest(payload)
-                .map(errors -> Response.status(BAD_REQUEST).entity(errors).build())
+                .<ResponseEntity<?>>map(errors -> ResponseEntity.status(BAD_REQUEST).body(errors))
                 .orElseGet(() -> processUpdateServiceAttributePayload(serviceExternalId, payload));
     }
 
-    private Response processUpdateServiceAttributePayload(String serviceExternalId, JsonNode payload) {
+    private ResponseEntity<?> processUpdateServiceAttributePayload(String serviceExternalId, JsonNode payload) {
 
         final List<ServiceUpdateRequest> requests = ServiceUpdateRequest.getUpdateRequests(payload);
-        return serviceServicesFactory.serviceUpdater().doUpdate(serviceExternalId, requests)
-                .map(service -> Response.status(OK).entity(service).build())
-                .orElseGet(() -> Response.status(NOT_FOUND).build());
+        return serviceUpdater.doUpdate(serviceExternalId, requests)
+                .map(service -> ResponseEntity.status(OK).body(service))
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
     }
 
-    @Path("/{serviceExternalId}/merchant-details")
-    @PUT
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @PutMapping("/v1/api/services/{serviceExternalId}/merchant-details")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = "Services",
             summary = "Update merchant details of a service",
@@ -313,21 +311,19 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "400", description = "Invalid payload"),
             }
     )
-    public Response updateServiceMerchantDetails(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
-                                                 @PathParam("serviceExternalId") String serviceExternalId,
+    public ResponseEntity<?> updateServiceMerchantDetails(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
+                                                 @PathVariable("serviceExternalId") String serviceExternalId,
                                                  @Parameter(schema = @Schema(implementation = UpdateMerchantDetailsRequest.class))
-                                                 JsonNode payload)
+                                                 @org.springframework.web.bind.annotation.RequestBody(required = false) JsonNode payload)
             throws ValidationException, ServiceNotFoundException {
         serviceRequestValidator.validateUpdateMerchantDetailsRequest(payload);
-        Service service = serviceServicesFactory.serviceUpdater().doUpdateMerchantDetails(
+        Service service = serviceUpdater.doUpdateMerchantDetails(
                 serviceExternalId, UpdateMerchantDetailsRequest.from(payload));
-        return Response.status(OK).entity(service).build();
+        return ResponseEntity.status(OK).body(service);
     }
 
-    @Path("/{serviceExternalId}/users")
-    @GET
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @GetMapping("/v1/api/services/{serviceExternalId}/users")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = "Services",
             summary = "Find users of a service",
@@ -339,26 +335,24 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "404", description = "Not found")
             }
     )
-    public Response findUsersByServiceId(@PathParam("serviceExternalId") String serviceExternalId, 
-                                         @QueryParam("role") RoleName role) {
+    public ResponseEntity<?> findUsersByServiceId(@PathVariable("serviceExternalId") String serviceExternalId, 
+                                         @RequestParam(value = "role", required = false) RoleName role) {
         return serviceDao.findByExternalId(serviceExternalId)
                 .map(serviceEntity ->
-                        Response.status(200).entity(
+                        ResponseEntity.status(200).body(
                                 userDao.findByServiceId(serviceEntity.getId(), role)
                                         .stream()
                                         .map(UserEntity::toUser)
                                         .map(linksBuilder::decorate)
                                         .toList()
-                        ).build()
-                ).orElseGet(() -> Response.status(NOT_FOUND).build());
+                        )
+                ).orElseThrow(() -> new ResponseStatusException(NOT_FOUND));
     }
 
     // To consider for all the operations add @HeaderParam("GovUkPay-User-Context") and creating a filter
     // so we could map permissions with Regex URLs and Http method passed on to this filter.
-    @Path("/{serviceExternalId}/users/{userExternalId}")
-    @DELETE
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @DeleteMapping("/v1/api/services/{serviceExternalId}/users/{userExternalId}")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = "Services",
             summary = "Delete user from a service",
@@ -368,25 +362,23 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "409", description = "Conflict. `GovUkPay-User-Context` is same as userExternalId or user with `userExternalId` is not admin of the service"),
             }
     )
-    public Response removeUserFromService(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
-                                          @PathParam("serviceExternalId") String serviceExternalId,
+    public ResponseEntity<?> removeUserFromService(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
+                                          @PathVariable("serviceExternalId") String serviceExternalId,
                                           @Parameter(example = "0ddf69c1ba924deca07f0ee748ff1533", description = "Admin user external ID of the service")
-                                          @PathParam("userExternalId") String userExternalId,
+                                          @PathVariable("userExternalId") String userExternalId,
                                           @Parameter(example = "d012mkldfdfnsdhqha7f0ee748ff1546", required = true, description = "User external ID to remove from service")
-                                          @HeaderParam(HEADER_USER_CONTEXT) String userContext) {
+                                          @RequestHeader(value = HEADER_USER_CONTEXT, required = false) String userContext) {
         if (isBlank(userContext)) {
-            return Response.status(Status.FORBIDDEN).build();
+            throw new ResponseStatusException(FORBIDDEN);
         } else if (userExternalId.equals(userContext)) {
-            return Response.status(CONFLICT).build();
+            throw new ResponseStatusException(CONFLICT);
         }
-        serviceServicesFactory.serviceUserRemover().remove(userExternalId, userContext, serviceExternalId);
-        return Response.status(NO_CONTENT).build();
+        serviceUserRemover.remove(userExternalId, userContext, serviceExternalId);
+        return ResponseEntity.status(NO_CONTENT).build();
     }
 
-    @Path("/{serviceExternalId}/stripe-agreement")
-    @POST
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
+    @PostMapping("/v1/api/services/{serviceExternalId}/stripe-agreement")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = "Services",
             summary = "Record acceptance of Stripe terms",
@@ -397,26 +389,25 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "422", description = "Invalid JSON payload or IP address")
             }
     )
-    public Response createStripeAgreement(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
-                                          @PathParam("serviceExternalId") String serviceExternalId,
-                                          @NotNull @Valid StripeAgreementRequest stripeAgreementRequest) throws UnknownHostException {
+    public ResponseEntity<?> createStripeAgreement(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
+                                          @PathVariable("serviceExternalId") String serviceExternalId,
+                                          @NotNull @Valid @org.springframework.web.bind.annotation.RequestBody(required = false) StripeAgreementRequest stripeAgreementRequest) throws UnknownHostException {
         LOGGER.info("Create stripe agreement POST request - [ {} ]", stripeAgreementRequest.toString());
 
         Optional<StripeAgreement> maybeStripeAgreement = stripeAgreementService.findStripeAgreementByServiceId(serviceExternalId);
         if (maybeStripeAgreement.isPresent()) {
             LOGGER.info("Stripe agreement information is already stored for this service");
-            return Response.status(OK).build();
+            return ResponseEntity.status(OK).build();
         }
         
         stripeAgreementService.doCreate(serviceExternalId,
                 InetAddress.getByName(stripeAgreementRequest.getIpAddress()));
 
-        return Response.status(CREATED).build();
+        return ResponseEntity.status(CREATED).build();
     }
 
-    @Path("/{serviceExternalId}/stripe-agreement")
-    @GET
-    @Produces(APPLICATION_JSON)
+    @GetMapping("/v1/api/services/{serviceExternalId}/stripe-agreement")
+    @JsonMediaTypes
     @Operation(
             tags = "Services",
             summary = "Get details about the acceptance of Stripe terms",
@@ -428,16 +419,14 @@ public class ServiceResource {
             }
     )
     public StripeAgreement getStripeAgreement(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
-                                              @PathParam("serviceExternalId") String serviceExternalId) {
+                                              @PathVariable("serviceExternalId") String serviceExternalId) {
 
         return stripeAgreementService.findStripeAgreementByServiceId(serviceExternalId)
                 .orElseThrow(() -> new WebApplicationException(NOT_FOUND));
     }
 
-    @Path("/{serviceExternalId}/govuk-pay-agreement")
-    @POST
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
+    @PostMapping("/v1/api/services/{serviceExternalId}/govuk-pay-agreement")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = "Services",
             summary = "Record acceptance of GOV.UK Pay terms",
@@ -456,16 +445,15 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "404", description = "Service with serviceExternalId not found")
             }
     )
-    public Response createGovUkPayAgreement(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
-                                            @PathParam("serviceExternalId") String serviceExternalId, JsonNode payload) {
+    public ResponseEntity<?> createGovUkPayAgreement(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
+                                            @PathVariable("serviceExternalId") String serviceExternalId, @org.springframework.web.bind.annotation.RequestBody(required = false) JsonNode payload) {
         return govUkPayAgreementRequestValidator.validateCreateRequest(payload)
-                .map(errors -> Response.status(BAD_REQUEST).entity(errors).build())
+                .<ResponseEntity<?>>map(errors -> ResponseEntity.status(BAD_REQUEST).body(errors))
                 .orElseGet(() -> createGovUkPayAgreementFromPayload(serviceExternalId, payload));
     }
 
-    @Path("/{serviceExternalId}/govuk-pay-agreement")
-    @GET
-    @Produces(APPLICATION_JSON)
+    @GetMapping("/v1/api/services/{serviceExternalId}/govuk-pay-agreement")
+    @JsonMediaTypes
     @Operation(
             tags = "Services",
             summary = "Get details about the acceptance of GOV.UK Pay terms",
@@ -476,36 +464,35 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "404", description = "Service with serviceExternalId not found"),
             }
     )
-    public Response getGovUkPayAgreement(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
-                                         @PathParam("serviceExternalId") String serviceExternalId) {
+    public ResponseEntity<?> getGovUkPayAgreement(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
+                                         @PathVariable("serviceExternalId") String serviceExternalId) {
         return govUkPayAgreementService.findGovUkPayAgreementByServiceId(serviceExternalId)
-                .map(agreement -> Response.status(OK).entity(agreement).build())
+                .map(agreement -> ResponseEntity.status(OK).body(agreement))
                 .orElseThrow(() -> new WebApplicationException(NOT_FOUND));
     }
 
-    private Response createGovUkPayAgreementFromPayload(String serviceExternalId, JsonNode payload) {
-        return govUkPayAgreementService.findGovUkPayAgreementByServiceId(serviceExternalId).map(govUkPayAgreement -> {
+    private ResponseEntity<?> createGovUkPayAgreementFromPayload(String serviceExternalId, JsonNode payload) {
+        return govUkPayAgreementService.findGovUkPayAgreementByServiceId(serviceExternalId).<ResponseEntity<?>>map(govUkPayAgreement -> {
             LOGGER.info("GOV.UK Pay agreement information is already stored for this service");
-            return Response.status(OK).entity(govUkPayAgreement).build();
+            return ResponseEntity.status(OK).body(govUkPayAgreement);
         }).orElseGet(() -> {
             ServiceEntity serviceEntity = serviceDao.findByExternalId(serviceExternalId)
                     .orElseThrow(() -> new WebApplicationException(NOT_FOUND));
             Optional<UserEntity> userEntity = userDao.findByExternalId(payload.get("user_external_id").asText());
             if (!userEntity.isPresent()) {
-                return Response.status(BAD_REQUEST).entity(Errors.from("Field [user_external_id] must be a valid user ID")).build();
+                return ResponseEntity.status(BAD_REQUEST).body(Errors.from("Field [user_external_id] must be a valid user ID"));
             }
             if (!userEntity.get().getServicesRole(serviceExternalId).isPresent()) {
-                return Response.status(BAD_REQUEST).entity(Errors.from("User does not belong to the given service")).build();
+                return ResponseEntity.status(BAD_REQUEST).body(Errors.from("User does not belong to the given service"));
             }
             GovUkPayAgreement govUkPayAgreement = govUkPayAgreementService.doCreate(serviceEntity, userEntity.get().getEmail(), ZonedDateTime.now(ZoneOffset.UTC));
 
-            return Response.status(CREATED).entity(govUkPayAgreement).build();
+            return ResponseEntity.status(CREATED).body(govUkPayAgreement);
         });
     }
 
-    @Path("/{serviceExternalId}/send-live-email")
-    @POST
-    @Produces(APPLICATION_JSON)
+    @PostMapping("/v1/api/services/{serviceExternalId}/send-live-email")
+    @JsonMediaTypes
     @Operation(
             tags = "Services",
             summary = "Sends an email to the user who signed the service agreement to inform them that their service is live",
@@ -516,11 +503,11 @@ public class ServiceResource {
                     @ApiResponse(responseCode = "404", description = "Service with serviceExternalId not found"),
             }
     )
-    public Response sendLiveAccountCreatedEmail(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
-                                                @PathParam("serviceExternalId") String serviceExternalId) {
+    public ResponseEntity<?> sendLiveAccountCreatedEmail(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
+                                                @PathVariable("serviceExternalId") String serviceExternalId) {
         serviceDao.findByExternalId(serviceExternalId)
                 .orElseThrow(() -> new WebApplicationException(NOT_FOUND));
         sendLiveAccountCreatedEmailService.sendEmail(serviceExternalId);
-        return Response.status(OK).build();
+        return ResponseEntity.status(OK).build();
     }
 }

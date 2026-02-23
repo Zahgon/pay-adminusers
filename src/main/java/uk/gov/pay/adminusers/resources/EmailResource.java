@@ -1,39 +1,34 @@
 package uk.gov.pay.adminusers.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.service.EmailService;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.http.ResponseEntity;
+import uk.gov.pay.adminusers.web.JsonMediaTypes;
 
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
+import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 
 //TODO remove this resource as it's only applicable for sending direct debit emails
-@Path("/")
+@RestController
 public class EmailResource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EmailResource.class);
 
     private final EmailService notificationService;
     private final EmailRequestParser emailRequestParser;
-
-    @Inject
     public EmailResource(EmailService notificationService, EmailRequestParser emailRequestParser) {
         this.notificationService = notificationService;
         this.emailRequestParser = emailRequestParser;
     }
 
-    @Path("/v1/emails/send")
-    @POST
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
-    public Response sendEmail(JsonNode payload) throws InvalidEmailRequestException, InvalidMerchantDetailsException {
+    @PostMapping("/v1/emails/send")
+    @JsonMediaTypes(consumes = true)
+    public ResponseEntity<?> sendEmail(@org.springframework.web.bind.annotation.RequestBody(required = false) JsonNode payload) throws InvalidEmailRequestException, InvalidMerchantDetailsException {
         LOGGER.info("Received email request");
         EmailRequest emailRequest = emailRequestParser.parse(payload);
         EmailTemplate template = emailRequest.getTemplate();
@@ -44,6 +39,6 @@ public class EmailResource {
                 gatewayAccountId,
                 template,
                 emailRequest.getPersonalisation());
-        return Response.status(Response.Status.OK).build();
+        return ResponseEntity.status(OK).build();
     }
 }

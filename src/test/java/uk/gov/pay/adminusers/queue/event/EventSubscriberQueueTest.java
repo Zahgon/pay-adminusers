@@ -12,8 +12,8 @@ import uk.gov.pay.adminusers.app.config.EventSubscriberQueueConfig;
 import uk.gov.pay.adminusers.app.config.SqsConfig;
 import uk.gov.pay.adminusers.queue.model.Event;
 import uk.gov.pay.adminusers.queue.model.EventMessage;
-import uk.gov.service.payments.commons.queue.model.QueueMessage;
-import uk.gov.service.payments.commons.queue.sqs.SqsQueueService;
+import uk.gov.pay.adminusers.queue.sqs.QueueMessage;
+import uk.gov.pay.adminusers.queue.sqs.SqsQueueService;
 
 import java.util.List;
 

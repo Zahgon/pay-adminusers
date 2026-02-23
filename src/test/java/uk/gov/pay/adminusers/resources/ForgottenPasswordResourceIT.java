@@ -6,10 +6,10 @@ import uk.gov.pay.adminusers.fixtures.ForgottenPasswordDbFixture;
 import java.util.Map;
 
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.hamcrest.core.Is.is;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.OK;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 import static uk.gov.pay.adminusers.fixtures.ForgottenPasswordDbFixture.aForgottenPasswordDbFixture;
 import static uk.gov.pay.adminusers.fixtures.UserDbFixture.userDbFixture;
@@ -32,7 +32,7 @@ public class ForgottenPasswordResourceIT extends IntegrationTest {
                 .accept(JSON)
                 .post(FORGOTTEN_PASSWORDS_RESOURCE_URL)
                 .then()
-                .statusCode(OK.getStatusCode());
+                .statusCode(OK.value());
     }
 
     @Test
@@ -45,7 +45,7 @@ public class ForgottenPasswordResourceIT extends IntegrationTest {
                 .accept(JSON)
                 .post(FORGOTTEN_PASSWORDS_RESOURCE_URL)
                 .then()
-                .statusCode(NOT_FOUND.getStatusCode());
+                .statusCode(NOT_FOUND.value());
 
     }
 
@@ -67,7 +67,7 @@ public class ForgottenPasswordResourceIT extends IntegrationTest {
                 .accept(JSON)
                 .get(FORGOTTEN_PASSWORDS_RESOURCE_URL + "/" + forgottenPasswordCode)
                 .then()
-                .statusCode(OK.getStatusCode())
+                .statusCode(OK.value())
                 .body("code", is(forgottenPasswordCode));
     }
 
@@ -79,7 +79,7 @@ public class ForgottenPasswordResourceIT extends IntegrationTest {
                 .accept(JSON)
                 .get(FORGOTTEN_PASSWORDS_RESOURCE_URL + "/non-existent-code")
                 .then()
-                .statusCode(NOT_FOUND.getStatusCode());
+                .statusCode(NOT_FOUND.value());
 
     }
 
@@ -91,7 +91,7 @@ public class ForgottenPasswordResourceIT extends IntegrationTest {
                 .accept(JSON)
                 .get(FORGOTTEN_PASSWORDS_RESOURCE_URL + "/" + randomAlphanumeric(256))
                 .then()
-                .statusCode(NOT_FOUND.getStatusCode());
+                .statusCode(NOT_FOUND.value());
 
     }
 }

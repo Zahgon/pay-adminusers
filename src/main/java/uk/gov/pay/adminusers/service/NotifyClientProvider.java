@@ -6,7 +6,7 @@ import uk.gov.service.notify.NotificationClient;
 
 public class NotifyClientProvider {
 
-    private NotifyConfiguration configuration;
+    private final NotifyConfiguration configuration;
 
     public NotifyClientProvider(NotifyConfiguration configuration) {
         this.configuration = configuration;

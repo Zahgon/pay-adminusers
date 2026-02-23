@@ -6,15 +6,16 @@ import uk.gov.pay.adminusers.utils.Errors;
 import uk.gov.pay.adminusers.validations.RequestValidations;
 import uk.gov.service.payments.commons.api.exception.ValidationException;
 
-import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Component;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
+@Component
 public class ServiceRequestValidator {
 
     /* default */ static final String FIELD_MERCHANT_DETAILS_NAME = "name";
@@ -36,8 +37,6 @@ public class ServiceRequestValidator {
 
     private final RequestValidations requestValidations;
     private final ServiceUpdateOperationValidator serviceUpdateOperationValidator;
-
-    @Inject
     public ServiceRequestValidator(RequestValidations requestValidations, ServiceUpdateOperationValidator serviceUpdateOperationValidator) {
         this.requestValidations = requestValidations;
         this.serviceUpdateOperationValidator = serviceUpdateOperationValidator;

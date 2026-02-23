@@ -1,22 +1,21 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
 import uk.gov.pay.adminusers.model.Invite;
 import uk.gov.pay.adminusers.persistence.dao.InviteDao;
 import uk.gov.pay.adminusers.persistence.dao.UserDao;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.inviteLockedException;
 
+@Service
 public class InviteFinder {
 
     private final InviteDao inviteDao;
     private final UserDao userDao;
-
-    @Inject
     public InviteFinder(InviteDao inviteDao, UserDao userDao) {
         this.inviteDao = inviteDao;
         this.userDao = userDao;

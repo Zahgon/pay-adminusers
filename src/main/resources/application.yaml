@@ -1,0 +1,125 @@
+# The adminusers service is configured through the environment variables listed in README.md; the defaults are the
+# ones the service has always had, and the variables without a default must be set.
+server:
+  address: ${BIND_HOST:127.0.0.1}
+  port: ${PORT:8080}
+  compression:
+    # entities of at least 256 bytes are gzip-compressed for clients that accept it
+    enabled: true
+    min-response-size: 256
+
+management:
+  server:
+    address: ${BIND_HOST:127.0.0.1}
+    port: ${ADMIN_PORT:8081}
+  endpoints:
+    access:
+      default: none
+    web:
+      exposure:
+        exclude: "*"
+
+spring:
+  main:
+    banner-mode: off
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME:adminusers}?sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory&${DB_SSL_OPTION}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      # the maximum amount of time (ms) to wait on an empty pool before throwing an exception
+      connection-timeout: 1000
+      # the timeout (ms) before a connection validation query fails
+      validation-timeout: 2000
+      connection-test-query: "SELECT '1'"
+      # the minimum number of connections to keep open
+      minimum-idle: 4
+      # the maximum number of connections to keep open
+      maximum-pool-size: 8
+      # the minimum amount of time (ms) a connection must sit idle in the pool before it is eligible for eviction
+      idle-timeout: 60000
+  dao:
+    exceptiontranslation:
+      # the service handles the persistence provider's own exceptions
+      enabled: false
+  web:
+    resources:
+      add-mappings: false
+
+adminusers:
+  environment: ${ENVIRONMENT}
+  jpa-configuration:
+    jpa-logging-level: ${JPA_LOG_LEVEL:WARNING}
+    sql-logging-level: ${JPA_SQL_LOG_LEVEL:WARNING}
+    ddl-generation-output-mode: database
+    query-results-cache: false
+    cache-shared-default: false
+  notify-configuration:
+    card-api-key: ${NOTIFY_API_KEY:api_key-pay-notify-service-id-pay-notify-secret-needs-to-be-32-chars-fsghdngfhmhfkrgsfs}
+    notification-base-url: ${NOTIFY_BASE_URL:https://stubs.pymnt.localdomain/notify}
+    sign-in-otp-sms-template-id: ${NOTIFY_SIGN_IN_OTP_SMS_TEMPLATE_ID:pay-notify-sign-in-otp-sms-template-id}
+    change-sign-in2fa-to-sms-otp-sms-template-id: ${NOTIFY_CHANGE_SIGN_IN_2FA_TO_SMS_OTP_SMS_TEMPLATE_ID:pay-notify-change-sign-in-2fa-to-sms-otp-sms-template-id}
+    self-initiated-create-user-and-service-otp-sms-template-id: ${NOTIFY_SELF_INITIATED_CREATE_USER_AND_SERVICE_OTP_SMS_TEMPLATE_ID:pay-notify-self-initiated-create-user-and-service-otp-sms-template-id}
+    create-user-in-response-to-invitation-to-service-otp-sms-template-id: ${NOTIFY_CREATE_USER_IN_RESPONSE_TO_INVITATION_TO_SERVICE_OTP_SMS_TEMPLATE_ID:pay-notify-create-user-in-response-to-invitation-to-service-otp-sms-template-id}
+    invite-user-email-template-id: ${NOTIFY_INVITE_USER_EMAIL_TEMPLATE_ID:pay-notify-invite-user-email-template-id}
+    invite-user-existing-email-template-id: ${NOTIFY_INVITE_USER_EXISTING_EMAIL_TEMPLATE_ID:pay-notify-invite-user-existing-email-template-id}
+    forgotten-password-email-template-id: ${NOTIFY_FORGOTTEN_PASSWORD_EMAIL_TEMPLATE_ID:pay-notify-forgotten-password-email-template-id}
+    invite-service-email-template-id: ${NOTIFY_INVITE_SERVICE_EMAIL_TEMPLATE_ID:pay-notify-invite-service-email-template-id}
+    invite-service-user-exists-email-template-id: ${NOTIFY_INVITE_SERVICE_USER_EXITS_EMAIL_TEMPLATE_ID:pay-notify-invite-service-user-exists-email-template-id}
+    invite-service-user-disabled-email-template-id: ${NOTIFY_INVITE_SERVICE_USER_DISABLED_EMAIL_TEMPLATE_ID:pay-notify-invite-service-user-disabled-email-template-id}
+    live-account-created-email-template-id: ${NOTIFY_LIVE_ACCOUNT_CREATED_EMAIL_TEMPLATE_ID:pay-notify-live-account-created-email-template-id}
+    stripe-dispute-created-email-template-id: ${NOTIFY_STRIPE_DISPUTE_CREATED_EMAIL_TEMPLATE_ID:pay-notify-stripe-dispute-created-email-template-id}
+    stripe-dispute-lost-email-template-id: ${NOTIFY_STRIPE_DISPUTE_LOST_EMAIL_TEMPLATE_ID:pay-notify-stripe-dispute-lost-email-template-id}
+    stripe-dispute-lost-and-service-charged-email-template-id: ${NOTIFY_STRIPE_DISPUTE_LOST_AND_SERVICE_CHARGED_EMAIL_TEMPLATE_ID:pay-notify-stripe-dispute-lost-email-template-id}
+    stripe-dispute-evidence-submitted-email-template-id: ${NOTIFY_STRIPE_DISPUTE_EVIDENCE_SUBMITTED_EMAIL_TEMPLATE_ID:pay-notify-stripe-dispute-evidence-submitted-email-template-id}
+    stripe-dispute-won-email-template-id: ${NOTIFY_STRIPE_DISPUTE_WON_EMAIL_TEMPLATE_ID:pay-notify-stripe-dispute-won-email-template-id}
+    notify-email-reply-to-support-id: ${NOTIFY_EMAIL_REPLY_TO_SUPPORT_ID:pay-notify-email-reply-to-support-id}
+  notify-direct-debit-configuration:
+    mandate-cancelled-email-template-id: ${NOTIFY_MANDATE_CANCELLED_EMAIL_TEMPLATE_ID:pay-mandate-cancelled-email-template-id}
+    mandate-failed-email-template-id: ${NOTIFY_MANDATE_FAILED_EMAIL_TEMPLATE_ID:pay-mandate-failed-email-template-id}
+    payment-failed-email-template-id: ${NOTIFY_PAYMENT_FAILED_EMAIL_TEMPLATE_ID:pay-payment-failed-email-template-id}
+    one-off-mandate-and-payment-created-email-template-id: ${NOTIFY_ONE_OFF_MANDATE_AND_PAYMENT_CREATED_EMAIL_TEMPLATE_ID:pay-one-off-mandate-and-payment-created-email-template-id}
+    on-demand-mandate-created-email-template-id: ${NOTIFY_ON_DEMAND_MANDATE_CREATED_EMAIL_TEMPLATE_ID:pay-on-demand-mandate-created-email-template-id}
+    on-demand-payment-confirmed-email-template-id: ${NOTIFY_ON_DEMAND_PAYMENT_CONFIRMED_EMAIL_TEMPLATE_ID:pay-on-demand-payment-confirmed-email-template-id}
+  forgotten-password-expiry-minutes: ${FORGOTTEN_PASSWORD_EXPIRY_MINUTES:90}
+  links:
+    selfservice-url: ${SELFSERVICE_URL:https://selfservice.pymnt.localdomain}
+    selfservice-invites-url: ${SELFSERVICE_URL:https://selfservice.pymnt.localdomain}/invites
+    selfservice-login-url: ${SELFSERVICE_URL:https://selfservice.pymnt.localdomain}/login
+    selfservice-forgotten-password-url: ${SELFSERVICE_URL:https://selfservice.pymnt.localdomain}/reset-password
+    selfservice-services-url: ${SELFSERVICE_URL:https://selfservice.pymnt.localdomain}/services
+    support-url: ${SUPPORT_URL:https://frontend.pymnt.localdomain/contact/}
+  base-url: ${BASE_URL:http://localhost:8080}
+  login-attempt-cap: ${LOGIN_ATTEMPT_CAP:10}
+  second-factor-auth-configuration:
+    # valid time windows should be the current window plus an even number of past and future windows which to
+    # validate against
+    valid-time-windows: 9
+    time-window-in-seconds: 30
+  sqs-config:
+    non-standard-service-endpoint: ${AWS_SQS_NON_STANDARD_SERVICE_ENDPOINT:false}
+    endpoint: ${AWS_SQS_ENDPOINT:}
+    region: ${AWS_SQS_REGION}
+    secret-key: ${AWS_SECRET_KEY}
+    access-key: ${AWS_ACCESS_KEY}
+    event-subscriber-queue-url: ${AWS_SQS_EVENT_SUBSCRIBER_QUEUE_URL}
+    message-maximum-wait-time-in-seconds: ${AWS_SQS_MESSAGE_MAXIMUM_WAIT_TIME_IN_SECONDS:1}
+    message-maximum-batch-size: ${AWS_SQS_MESSAGE_MAXIMUM_BATCH_SIZE:10}
+    connector-tasks-queue-url: ${AWS_SQS_CONNECTOR_TASKS_QUEUE_URL}
+  event-subscriber-queue-config:
+    event-subscriber-queue-enabled: ${EVENT_SUBSCRIBER_QUEUE_ENABLED:false}
+    failed-message-retry-delay-in-seconds: ${EVENT_SUBSCRIBER_QUEUE_MESSAGE_RETRY_FAILED_IN_SECONDS:3600}
+    queue-scheduler-number-of-threads: ${EVENT_SUBSCRIBER_QUEUE_SCHEDULER_NUMBER_OF_THREADS:1}
+    queue-scheduler-thread-delay-in-milliseconds: ${EVENT_SUBSCRIBER_QUEUE_SCHEDULER_THREAD_DELAY_IN_MILLISECONDS:60000}
+    queue-scheduler-shutdown-timeout-in-seconds: ${EVENT_SUBSCRIBER_QUEUE_SCHEDULER_SHUTDOWN_TIMEOUT_IN_SECONDS:15}
+  ledger-base-url: ${LEDGER_URL}
+  rest-client-config:
+    disabled-secure-connection: ${DISABLE_INTERNAL_HTTPS:false}
+  ecs-container-metadata-uri-v4: ${ECS_CONTAINER_METADATA_URI_V4:}
+  expunge-and-archive-data-config:
+    expunge-and-archive-historical-data-enabled: ${EXPUNGE_AND_ARCHIVE_HISTORICAL_DATA_ENABLED:false}
+    expunge-user-data-after-days: ${EXPUNGE_USER_DATA_AFTER_DAYS:1460}
+    archive-services-after-days: ${EXPUNGE_ARCHIVE_SERVICES_AFTER_DAYS:2555}
+  connector-task-queue-config:
+    failed-message-retry-delay-in-seconds: ${TASK_QUEUE_MESSAGE_RETRY_FAILED_IN_SECONDS:3600}

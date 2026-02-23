@@ -62,8 +62,8 @@ class ServiceDaoIT extends DaoTestBase {
     @BeforeEach
     void before() {
         databaseHelper.truncateAllData();
-        serviceDao = env.getInstance(ServiceDao.class);
-        adminRole = env.getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        serviceDao = env.getBean(ServiceDao.class);
+        adminRole = env.getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
     }
 
     @Test

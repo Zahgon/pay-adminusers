@@ -1,22 +1,21 @@
 package uk.gov.pay.adminusers.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.inject.Inject;
 import uk.gov.pay.adminusers.utils.Errors;
 import uk.gov.pay.adminusers.validations.RequestValidations;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import org.springframework.stereotype.Component;
 
 import static uk.gov.pay.adminusers.resources.ResetPasswordResource.FIELD_CODE;
 import static uk.gov.pay.adminusers.resources.ResetPasswordResource.FIELD_PASSWORD;
 
+@Component
 public class ResetPasswordValidator {
 
     private final RequestValidations requestValidations;
-
-    @Inject
     public ResetPasswordValidator(RequestValidations requestValidations) {
         this.requestValidations = requestValidations;
     }

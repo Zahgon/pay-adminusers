@@ -1,8 +1,6 @@
 package uk.gov.pay.adminusers.app.config;
 
-import io.dropwizard.core.Configuration;
-
-public class LinksConfig extends Configuration {
+public class LinksConfig {
 
     private String selfserviceUrl;
     private String selfserviceInvitesUrl;
@@ -33,5 +31,29 @@ public class LinksConfig extends Configuration {
 
     public String getSelfserviceServicesUrl() {
         return selfserviceServicesUrl;
+    }
+
+    public void setSelfserviceUrl(String selfserviceUrl) {
+        this.selfserviceUrl = selfserviceUrl;
+    }
+
+    public void setSelfserviceInvitesUrl(String selfserviceInvitesUrl) {
+        this.selfserviceInvitesUrl = selfserviceInvitesUrl;
+    }
+
+    public void setSelfserviceLoginUrl(String selfserviceLoginUrl) {
+        this.selfserviceLoginUrl = selfserviceLoginUrl;
+    }
+
+    public void setSelfserviceForgottenPasswordUrl(String selfserviceForgottenPasswordUrl) {
+        this.selfserviceForgottenPasswordUrl = selfserviceForgottenPasswordUrl;
+    }
+
+    public void setSupportUrl(String supportUrl) {
+        this.supportUrl = supportUrl;
+    }
+
+    public void setSelfserviceServicesUrl(String selfserviceServicesUrl) {
+        this.selfserviceServicesUrl = selfserviceServicesUrl;
     }
 }

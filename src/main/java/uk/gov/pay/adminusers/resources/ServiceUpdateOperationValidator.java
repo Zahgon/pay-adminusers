@@ -6,7 +6,6 @@ import uk.gov.pay.adminusers.model.PspTestAccountStage;
 import uk.gov.pay.adminusers.validations.RequestValidations;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 
-import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -14,6 +13,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
@@ -46,6 +46,7 @@ import static uk.gov.pay.adminusers.service.ServiceUpdater.FIELD_SECTOR;
 import static uk.gov.pay.adminusers.service.ServiceUpdater.FIELD_SERVICE_NAME_PREFIX;
 import static uk.gov.pay.adminusers.service.ServiceUpdater.FIELD_WENT_LIVE_DATE;
 
+@Component
 public class ServiceUpdateOperationValidator {
 
     private static final String REPLACE = "replace";
@@ -69,8 +70,6 @@ public class ServiceUpdateOperationValidator {
 
     private static final EnumSet<GoLiveStage> GO_LIVE_STAGES = EnumSet.allOf(GoLiveStage.class);
     private static final EnumSet<PspTestAccountStage> PSP_TEST_ACCOUNT_STAGES = EnumSet.allOf(PspTestAccountStage.class);
-
-    @Inject
     public ServiceUpdateOperationValidator(RequestValidations requestValidations) {
         Map<String, List<String>> validAttributeUpdateOperations = new HashMap<>(Map.ofEntries(
                 entry(FIELD_GATEWAY_ACCOUNT_IDS, singletonList(ADD)),

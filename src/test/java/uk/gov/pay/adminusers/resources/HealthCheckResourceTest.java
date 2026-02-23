@@ -6,14 +6,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.jayway.jsonassert.JsonAssert;
-import io.dropwizard.core.setup.Environment;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 
-import jakarta.ws.rs.core.Response;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -28,17 +27,13 @@ class HealthCheckResourceTest {
     private static ObjectMapper objectMapper = new ObjectMapper();
 
     @Mock
-    private Environment environment;
-
-    @Mock
     private HealthCheckRegistry healthCheckRegistry;
 
     private HealthCheckResource resource;
 
     @BeforeEach
     void setUp() {
-        when(environment.healthChecks()).thenReturn(healthCheckRegistry);
-        resource = new HealthCheckResource(environment);
+        resource = new HealthCheckResource(healthCheckRegistry);
     }
 
     @Test
@@ -47,10 +42,10 @@ class HealthCheckResourceTest {
         map.put("ping", HealthCheck.Result.unhealthy("application is unavailable"));
         map.put("deadlocks", HealthCheck.Result.unhealthy("no new threads available"));
         when(healthCheckRegistry.runHealthChecks()).thenReturn(map);
-        Response response = resource.healthCheck();
-        assertThat(response.getStatus(), is(503));
+        ResponseEntity<?> response = resource.healthCheck();
+        assertThat(response.getStatusCode().value(), is(503));
         ObjectWriter ow = objectMapper.writer().withDefaultPrettyPrinter();
-        String body = ow.writeValueAsString(response.getEntity());
+        String body = ow.writeValueAsString(response.getBody());
 
         JsonAssert.with(body)
                 .assertThat("$.*", hasSize(2))
@@ -64,10 +59,10 @@ class HealthCheckResourceTest {
         map.put("ping", HealthCheck.Result.healthy());
         map.put("deadlocks", HealthCheck.Result.healthy());
         when(healthCheckRegistry.runHealthChecks()).thenReturn(map);
-        Response response = resource.healthCheck();
-        assertThat(response.getStatus(), is(200));
+        ResponseEntity<?> response = resource.healthCheck();
+        assertThat(response.getStatusCode().value(), is(200));
         ObjectWriter ow = objectMapper.writer().withDefaultPrettyPrinter();
-        String body = ow.writeValueAsString(response.getEntity());
+        String body = ow.writeValueAsString(response.getBody());
 
         JsonAssert.with(body)
                 .assertThat("$.*", hasSize(2))
@@ -81,10 +76,10 @@ class HealthCheckResourceTest {
         map.put("ping", HealthCheck.Result.healthy());
         map.put("deadlocks", HealthCheck.Result.unhealthy("no new threads available"));
         when(healthCheckRegistry.runHealthChecks()).thenReturn(map);
-        Response response = resource.healthCheck();
-        assertThat(response.getStatus(), is(503));
+        ResponseEntity<?> response = resource.healthCheck();
+        assertThat(response.getStatusCode().value(), is(503));
         ObjectWriter ow = objectMapper.writer().withDefaultPrettyPrinter();
-        String body = ow.writeValueAsString(response.getEntity());
+        String body = ow.writeValueAsString(response.getBody());
 
         JsonAssert.with(body)
                 .assertThat("$.*", hasSize(2))

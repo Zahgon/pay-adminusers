@@ -1,7 +1,6 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
-import com.google.inject.persist.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.apache.commons.lang3.StringUtils;
 import uk.gov.pay.adminusers.model.RoleName;
 import uk.gov.pay.adminusers.model.User;
@@ -15,12 +14,14 @@ import uk.gov.pay.adminusers.persistence.entity.ServiceRoleEntity;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.adminRoleLimitException;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.conflictingServiceForUser;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.serviceDoesNotExistError;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.undefinedRoleException;
 
+@Service
 public class ServiceRoleUpdater {
 
     private final UserDao userDao;
@@ -29,8 +30,6 @@ public class ServiceRoleUpdater {
     private final LinksBuilder linksBuilder;
 
     private final Integer adminsPerServiceLimit = 1;
-
-    @Inject
     public ServiceRoleUpdater(UserDao userDao, ServiceDao serviceDao, RoleDao roleDao, LinksBuilder linksBuilder) {
         this.userDao = userDao;
         this.serviceDao = serviceDao;

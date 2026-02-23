@@ -1,8 +1,6 @@
 package uk.gov.pay.adminusers.app.config;
 
-import io.dropwizard.core.Configuration;
-
-public class RestClientConfig extends Configuration {
+public class RestClientConfig {
 
     private String disabledSecureConnection;
 
@@ -12,5 +10,8 @@ public class RestClientConfig extends Configuration {
     public Boolean isDisabledSecureConnection() {
         return "true".equals(disabledSecureConnection);
     }
-}
 
+    public void setDisabledSecureConnection(String disabledSecureConnection) {
+        this.disabledSecureConnection = disabledSecureConnection;
+    }
+}

@@ -1,9 +1,9 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.name.Named;
-import com.google.inject.persist.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
+import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.model.CompleteInviteResponse;
 import uk.gov.pay.adminusers.model.Invite;
@@ -20,11 +20,11 @@ import uk.gov.pay.adminusers.service.NotificationService.OtpNotifySmsTemplateId;
 import uk.gov.service.payments.commons.model.jsonpatch.JsonPatchOp;
 import uk.gov.service.payments.commons.model.jsonpatch.JsonPatchRequest;
 
-import jakarta.inject.Inject;
-import jakarta.ws.rs.WebApplicationException;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 import static uk.gov.pay.adminusers.resources.InviteRequestValidator.FIELD_PASSWORD;
 import static uk.gov.pay.adminusers.resources.InviteRequestValidator.FIELD_TELEPHONE_NUMBER;
@@ -37,6 +37,7 @@ import static uk.gov.pay.adminusers.service.AdminUsersExceptions.userAlreadyExis
 import static uk.gov.pay.adminusers.service.NotificationService.OtpNotifySmsTemplateId.CREATE_USER_IN_RESPONSE_TO_INVITATION_TO_SERVICE;
 import static uk.gov.pay.adminusers.service.NotificationService.OtpNotifySmsTemplateId.SELF_INITIATED_CREATE_NEW_USER_AND_SERVICE;
 
+@Service
 public class InviteService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InviteService.class);
@@ -50,22 +51,20 @@ public class InviteService {
     private final PasswordHasher passwordHasher;
     private final LinksBuilder linksBuilder;
     private final Integer loginAttemptCap;
-
-    @Inject
     public InviteService(InviteDao inviteDao,
                          UserDao userDao,
                          NotificationService notificationService,
                          SecondFactorAuthenticator secondFactorAuthenticator,
                          PasswordHasher passwordHasher,
                          LinksBuilder linksBuilder,
-                         @Named("LOGIN_ATTEMPT_CAP") Integer loginAttemptCap) {
+                         AdminUsersConfig configuration) {
         this.inviteDao = inviteDao;
         this.userDao = userDao;
         this.notificationService = notificationService;
         this.secondFactorAuthenticator = secondFactorAuthenticator;
         this.passwordHasher = passwordHasher;
         this.linksBuilder = linksBuilder;
-        this.loginAttemptCap = loginAttemptCap;
+        this.loginAttemptCap = configuration.getLoginAttemptCap();
     }
 
     @Transactional
@@ -99,7 +98,7 @@ public class InviteService {
         return inviteEntity.toInvite();
     }
 
-    @Transactional(ignore = {WebApplicationException.class})
+    @Transactional(noRollbackFor = WebApplicationException.class)
     public void validateOtp(InviteValidateOtpRequest inviteOtpRequest) {
         InviteEntity inviteEntity = inviteDao.findByCode(inviteOtpRequest.getCode()).orElseThrow(() -> notFoundInviteException(inviteOtpRequest.getCode()));
         validateOtp(inviteEntity, inviteOtpRequest.getOtp());

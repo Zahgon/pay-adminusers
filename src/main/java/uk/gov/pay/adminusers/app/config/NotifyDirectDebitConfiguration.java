@@ -1,11 +1,9 @@
 package uk.gov.pay.adminusers.app.config;
 
-import io.dropwizard.core.Configuration;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-public class NotifyDirectDebitConfiguration extends Configuration {
+public class NotifyDirectDebitConfiguration {
 
     @Valid
     @NotNull
@@ -31,7 +29,6 @@ public class NotifyDirectDebitConfiguration extends Configuration {
     @NotNull
     private String onDemandPaymentConfirmedEmailTemplateId;
 
-
     public String getMandateCancelledEmailTemplateId() {
         return mandateCancelledEmailTemplateId;
     }
@@ -56,4 +53,27 @@ public class NotifyDirectDebitConfiguration extends Configuration {
         return onDemandPaymentConfirmedEmailTemplateId;
     }
 
+    public void setMandateCancelledEmailTemplateId(String mandateCancelledEmailTemplateId) {
+        this.mandateCancelledEmailTemplateId = mandateCancelledEmailTemplateId;
+    }
+
+    public void setMandateFailedEmailTemplateId(String mandateFailedEmailTemplateId) {
+        this.mandateFailedEmailTemplateId = mandateFailedEmailTemplateId;
+    }
+
+    public void setPaymentFailedEmailTemplateId(String paymentFailedEmailTemplateId) {
+        this.paymentFailedEmailTemplateId = paymentFailedEmailTemplateId;
+    }
+
+    public void setOneOffMandateAndPaymentCreatedEmailTemplateId(String oneOffMandateAndPaymentCreatedEmailTemplateId) {
+        this.oneOffMandateAndPaymentCreatedEmailTemplateId = oneOffMandateAndPaymentCreatedEmailTemplateId;
+    }
+
+    public void setOnDemandMandateCreatedEmailTemplateId(String onDemandMandateCreatedEmailTemplateId) {
+        this.onDemandMandateCreatedEmailTemplateId = onDemandMandateCreatedEmailTemplateId;
+    }
+
+    public void setOnDemandPaymentConfirmedEmailTemplateId(String onDemandPaymentConfirmedEmailTemplateId) {
+        this.onDemandPaymentConfirmedEmailTemplateId = onDemandPaymentConfirmedEmailTemplateId;
+    }
 }

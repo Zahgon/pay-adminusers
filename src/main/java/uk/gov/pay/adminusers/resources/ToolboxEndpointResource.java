@@ -6,38 +6,32 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.service.ServiceUserRemover;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.http.ResponseEntity;
+import uk.gov.pay.adminusers.web.JsonMediaTypes;
 
-import jakarta.inject.Inject;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.core.Response;
 
 import static java.lang.String.format;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.Response.Status.NO_CONTENT;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static net.logstash.logback.argument.StructuredArguments.kv;
-import static uk.gov.service.payments.logging.LoggingKeys.SERVICE_EXTERNAL_ID;
-import static uk.gov.service.payments.logging.LoggingKeys.USER_EXTERNAL_ID;
+import static uk.gov.pay.adminusers.utils.LoggingKeys.SERVICE_EXTERNAL_ID;
+import static uk.gov.pay.adminusers.utils.LoggingKeys.USER_EXTERNAL_ID;
 
-@Path("/v1/api/toolbox")
+@RestController
 public class ToolboxEndpointResource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ToolboxEndpointResource.class);
 
     private final ServiceUserRemover serviceUserRemover;
-
-    @Inject
     public ToolboxEndpointResource(ServiceUserRemover serviceUserRemover) {
         this.serviceUserRemover = serviceUserRemover;
     }
 
-    @Path("/services/{serviceExternalId}/users/{userExternalId}")
-    @DELETE
-    @Produces(APPLICATION_JSON)
-    @Consumes(APPLICATION_JSON)
+    @DeleteMapping("/v1/api/toolbox/services/{serviceExternalId}/users/{userExternalId}")
+    @JsonMediaTypes(consumes = true)
     @Operation(
             tags = "Toolbox",
             summary = "Remove user from service (Toolbox use only)",
@@ -47,10 +41,10 @@ public class ToolboxEndpointResource {
                     @ApiResponse(responseCode = "404", description = "User or Service not found"),
             }
     )
-    public Response removeUserFromService(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
-                                          @PathParam("serviceExternalId") String serviceExternalId,
+    public ResponseEntity<?> removeUserFromService(@Parameter(example = "7d19aff33f8948deb97ed16b2912dcd3")
+                                          @PathVariable("serviceExternalId") String serviceExternalId,
                                           @Parameter(example = "93ba1ec4ed6a4238a59f16ad97b4fa12")
-                                          @PathParam("userExternalId") String userExternalId) {
+                                          @PathVariable("userExternalId") String userExternalId) {
         LOGGER.info(format("Toolbox DELETE request - removing user %s from service %s,", serviceExternalId, userExternalId),
                 kv(SERVICE_EXTERNAL_ID, serviceExternalId),
                 kv(USER_EXTERNAL_ID, userExternalId));
@@ -58,6 +52,6 @@ public class ToolboxEndpointResource {
         LOGGER.info(format("Succeeded toolbox users DELETE request - user %s removed from service %s", serviceExternalId, userExternalId),
                 kv(SERVICE_EXTERNAL_ID, serviceExternalId),
                 kv(USER_EXTERNAL_ID, userExternalId));
-        return Response.status(NO_CONTENT).build();
+        return ResponseEntity.status(NO_CONTENT).build();
     }
 }

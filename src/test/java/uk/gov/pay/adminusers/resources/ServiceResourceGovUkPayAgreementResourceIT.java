@@ -33,7 +33,7 @@ class ServiceResourceGovUkPayAgreementResourceIT extends IntegrationTest {
     void setUp() {
         email = randomUuid() + "@example.org";
         service = serviceDbFixture(databaseHelper).insertService();
-        Role role = getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        Role role = getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
         user = userDbFixture(databaseHelper)
                 .withServiceRole(service, role)
                 .withEmail(email)

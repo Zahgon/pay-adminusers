@@ -1,13 +1,15 @@
 package uk.gov.pay.adminusers.pact;
 
-import au.com.dius.pact.provider.junit.State;
-import au.com.dius.pact.provider.junit.target.HttpTarget;
-import au.com.dius.pact.provider.junit.target.Target;
-import au.com.dius.pact.provider.junit.target.TestTarget;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import uk.gov.pay.adminusers.infra.AppWithPostgresAndSqsRule;
+import au.com.dius.pact.provider.junit5.HttpTestTarget;
+import au.com.dius.pact.provider.junit5.PactVerificationContext;
+import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
+import au.com.dius.pact.provider.junitsupport.State;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import uk.gov.pay.adminusers.infra.AppWithPostgresAndSqsExtension;
 import uk.gov.pay.adminusers.model.GoLiveStage;
 import uk.gov.pay.adminusers.model.Role;
 import uk.gov.pay.adminusers.model.RoleName;
@@ -26,30 +28,42 @@ import static uk.gov.pay.adminusers.fixtures.InviteDbFixture.inviteDbFixture;
 import static uk.gov.pay.adminusers.fixtures.ServiceDbFixture.serviceDbFixture;
 import static uk.gov.pay.adminusers.fixtures.UserDbFixture.userDbFixture;
 
+@ExtendWith(ProviderContractTestSuite.ConsumerSelection.class)
 public abstract class ContractTest {
 
-    @ClassRule
-    public static AppWithPostgresAndSqsRule app = new AppWithPostgresAndSqsRule();
-
-    @TestTarget
-    public static Target target;
+    @RegisterExtension
+    public static AppWithPostgresAndSqsExtension app = new AppWithPostgresAndSqsExtension();
 
     private static final PasswordHasher PASSWORD_HASHER = new PasswordHasher();
     private static DatabaseTestHelper dbHelper;
     private static Role adminRole;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpService() {
-        target = new HttpTarget(app.getLocalPort());
         dbHelper = app.getDatabaseTestHelper();
         // make sure we create services(including gateway account ids) before users
         serviceDbFixture(dbHelper).withGatewayAccountIds("268").insertService();
-        adminRole = app.getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        adminRole = app.getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
     }
 
-    @Before
+    @BeforeEach
+    public void setTarget(PactVerificationContext context) {
+        if (context != null) {
+            context.setTarget(new HttpTestTarget("localhost", app.getLocalPort()));
+        }
+    }
+
+    @BeforeEach
     public void resetDatabase() {
         dbHelper.truncateAllData();
+    }
+
+    @TestTemplate
+    @ExtendWith(PactVerificationInvocationContextProvider.class)
+    public void pactVerificationTestTemplate(PactVerificationContext context) {
+        if (context != null) {
+            context.verifyInteraction();
+        }
     }
 
     @State("a valid forgotten password entry and a related user exists")

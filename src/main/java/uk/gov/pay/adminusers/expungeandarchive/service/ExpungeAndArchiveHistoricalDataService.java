@@ -1,6 +1,5 @@
 package uk.gov.pay.adminusers.expungeandarchive.service;
 
-import com.google.inject.Inject;
 import io.prometheus.client.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,13 +26,15 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.stereotype.Service;
 
 import static java.time.ZoneOffset.UTC;
 import static java.time.temporal.ChronoUnit.DAYS;
 import static net.logstash.logback.argument.StructuredArguments.kv;
-import static uk.gov.service.payments.logging.LoggingKeys.SERVICE_EXTERNAL_ID;
-import static uk.gov.service.payments.logging.LoggingKeys.USER_EXTERNAL_ID;
+import static uk.gov.pay.adminusers.utils.LoggingKeys.SERVICE_EXTERNAL_ID;
+import static uk.gov.pay.adminusers.utils.LoggingKeys.USER_EXTERNAL_ID;
 
+@Service
 public class ExpungeAndArchiveHistoricalDataService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExpungeAndArchiveHistoricalDataService.class);
@@ -52,8 +53,6 @@ public class ExpungeAndArchiveHistoricalDataService {
             .help("Duration of expunge and archive historical data job in seconds")
             .unit("seconds")
             .register();
-
-    @Inject
     public ExpungeAndArchiveHistoricalDataService(UserDao userDao, InviteDao inviteDao,
                                                   ForgottenPasswordDao forgottenPasswordDao,
                                                   ServiceDao serviceDao,

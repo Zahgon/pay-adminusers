@@ -10,12 +10,12 @@ import java.util.Map;
 
 import static io.restassured.http.ContentType.JSON;
 import static java.lang.String.format;
-import static jakarta.ws.rs.core.Response.Status.GONE;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
+import static org.springframework.http.HttpStatus.GONE;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.OK;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 import static uk.gov.pay.adminusers.fixtures.InviteDbFixture.inviteDbFixture;
 import static uk.gov.pay.adminusers.fixtures.UserDbFixture.userDbFixture;
@@ -28,7 +28,7 @@ class InviteResourceUserCompleteIT extends IntegrationTest {
     
     @BeforeEach
     public void setUp() {
-        adminRole = getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        adminRole = getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
     }
 
     @Test
@@ -55,7 +55,7 @@ class InviteResourceUserCompleteIT extends IntegrationTest {
                 .when()
                 .post(INVITES_RESOURCE_URL + "/" + inviteCode + "/complete")
                 .then()
-                .statusCode(OK.getStatusCode())
+                .statusCode(OK.value())
                 .body("invite.disabled", is(true))
                 .body("service_external_id", is(serviceExternalId))
                 .body("user_external_id", is(userExternalId));
@@ -84,7 +84,7 @@ class InviteResourceUserCompleteIT extends IntegrationTest {
                 .when()
                 .post(INVITES_RESOURCE_URL + "/" + "non-existent-code" + "/complete")
                 .then()
-                .statusCode(NOT_FOUND.getStatusCode());
+                .statusCode(NOT_FOUND.value());
 
     }
 
@@ -113,12 +113,12 @@ class InviteResourceUserCompleteIT extends IntegrationTest {
                 .when()
                 .post(INVITES_RESOURCE_URL + "/" + inviteCode + "/complete")
                 .then()
-                .statusCode(OK.getStatusCode());
+                .statusCode(OK.value());
 
         givenSetup()
                 .when()
                 .post(INVITES_RESOURCE_URL + "/" + inviteCode + "/complete")
                 .then()
-                .statusCode(GONE.getStatusCode());
+                .statusCode(GONE.value());
     }
 }

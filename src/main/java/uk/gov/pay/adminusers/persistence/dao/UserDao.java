@@ -1,12 +1,11 @@
 package uk.gov.pay.adminusers.persistence.dao;
 
-import com.google.inject.Provider;
-import com.google.inject.persist.Transactional;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.pay.adminusers.model.RoleName;
 import uk.gov.pay.adminusers.persistence.entity.ServiceRoleEntity;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 
-import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
@@ -23,11 +22,10 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static java.util.stream.Collectors.toUnmodifiableMap;
 
+@Repository
 @Transactional
 public class UserDao extends JpaDao<UserEntity> {
-
-    @Inject
-    public UserDao(Provider<EntityManager> entityManager) {
+    public UserDao(EntityManager entityManager) {
         super(entityManager, UserEntity.class);
     }
 
@@ -35,7 +33,7 @@ public class UserDao extends JpaDao<UserEntity> {
         String query = "SELECT u FROM UserEntity u " +
                 "WHERE LOWER(u.externalId) = LOWER(:externalId)";
 
-        return entityManager.get()
+        return entityManager
                 .createQuery(query, UserEntity.class)
                 .setParameter("externalId", externalId)
                 .getResultList().stream().findFirst();
@@ -46,7 +44,7 @@ public class UserDao extends JpaDao<UserEntity> {
 
         List<String> lowerCaseExternalIds = externalIds.stream().map(String::toLowerCase).collect(toUnmodifiableList());
 
-        return entityManager.get()
+        return entityManager
                 .createQuery(query, UserEntity.class)
                 .setParameter("externalIds", lowerCaseExternalIds)
                 .getResultList();
@@ -66,7 +64,7 @@ public class UserDao extends JpaDao<UserEntity> {
                     " AND roles.name='admin'" +
                     " ORDER by sga.gateway_account_id";
 
-            Query nativeQuery = entityManager.get().createNativeQuery(query);
+            Query nativeQuery = entityManager.createNativeQuery(query);
 
             IntStream.rangeClosed(1, gatewayAccountIds.size()).forEach(i ->
                     nativeQuery.setParameter(i, gatewayAccountIds.get(i - 1)));
@@ -89,7 +87,7 @@ public class UserDao extends JpaDao<UserEntity> {
         String query = "SELECT u FROM UserEntity u " +
                 "WHERE LOWER(u.email) = LOWER(:email)";
 
-        return entityManager.get()
+        return entityManager
                 .createQuery(query, UserEntity.class)
                 .setParameter("email", email)
                 .getResultList().stream().findFirst();
@@ -111,7 +109,7 @@ public class UserDao extends JpaDao<UserEntity> {
         
         query += " ORDER BY s.user.email";
 
-        TypedQuery<ServiceRoleEntity> typedQuery = entityManager.get()
+        TypedQuery<ServiceRoleEntity> typedQuery = entityManager
                 .createQuery(query, ServiceRoleEntity.class)
                 .setParameter("serviceId", serviceId);
         
@@ -138,7 +136,7 @@ public class UserDao extends JpaDao<UserEntity> {
                 "      AND (last_logged_in_at < ?1 OR (\"createdAt\" < ?2 AND last_logged_in_at IS null))" +
                 " )";
 
-        return entityManager.get()
+        return entityManager
                 .createNativeQuery(query)
                 .setParameter(1, from(deleteRecordsBeforeDate))
                 .setParameter(2, from(deleteRecordsBeforeDate))

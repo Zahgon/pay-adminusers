@@ -1,7 +1,6 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
-import com.google.inject.persist.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.pay.adminusers.exception.ServiceNotFoundException;
 import uk.gov.pay.adminusers.expungeandarchive.service.ExpungeAndArchiveHistoricalDataService;
 import uk.gov.pay.adminusers.model.GoLiveStage;
@@ -22,10 +21,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import org.springframework.stereotype.Component;
 
 import static java.util.Map.entry;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.conflictingServiceGatewayAccounts;
 
+@Component
 public class ServiceUpdater {
 
     public static final String FIELD_GATEWAY_ACCOUNT_IDS = "gateway_account_ids";
@@ -56,8 +57,6 @@ public class ServiceUpdater {
     private final Map<String, BiConsumer<ServiceUpdateRequest, ServiceEntity>> attributeUpdaters;
 
     ExpungeAndArchiveHistoricalDataService expungeAndArchiveHistoricalDataService;
-
-    @Inject
     public ServiceUpdater(ServiceDao serviceDao, ExpungeAndArchiveHistoricalDataService expungeAndArchiveHistoricalDataService) {
         Map<String, BiConsumer<ServiceUpdateRequest, ServiceEntity>> attributeUpdaters = new HashMap<>(Map.ofEntries(
                 entry(FIELD_GATEWAY_ACCOUNT_IDS, assignGatewayAccounts()),

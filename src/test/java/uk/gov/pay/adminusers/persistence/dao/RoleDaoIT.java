@@ -5,7 +5,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.pay.adminusers.model.RoleName;
 
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 public class RoleDaoIT extends DaoTestBase {
 
@@ -13,7 +14,7 @@ public class RoleDaoIT extends DaoTestBase {
 
     @BeforeEach
     public void before() {
-        roleDao = env.getInstance(RoleDao.class);
+        roleDao = env.getBean(RoleDao.class);
     }
 
     @ParameterizedTest

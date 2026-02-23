@@ -1,7 +1,9 @@
 package uk.gov.pay.adminusers.service;
 
 import org.mindrot.jbcrypt.BCrypt;
+import org.springframework.stereotype.Service;
 
+@Service
 public class PasswordHasher {
 
     private static final int HASH_PASSWORD_SALT_ROUNDS = 10;

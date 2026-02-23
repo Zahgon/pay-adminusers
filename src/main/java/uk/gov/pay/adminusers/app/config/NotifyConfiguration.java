@@ -1,11 +1,9 @@
 package uk.gov.pay.adminusers.app.config;
 
-import io.dropwizard.core.Configuration;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-public class NotifyConfiguration extends Configuration {
+public class NotifyConfiguration {
 
     @Valid
     @NotNull
@@ -157,5 +155,81 @@ public class NotifyConfiguration extends Configuration {
 
     public String getNotifyEmailReplyToSupportId() {
         return notifyEmailReplyToSupportId;
+    }
+
+    public void setCardApiKey(String cardApiKey) {
+        this.cardApiKey = cardApiKey;
+    }
+
+    public void setNotificationBaseURL(String notificationBaseURL) {
+        this.notificationBaseURL = notificationBaseURL;
+    }
+
+    public void setSignInOtpSmsTemplateId(String signInOtpSmsTemplateId) {
+        this.signInOtpSmsTemplateId = signInOtpSmsTemplateId;
+    }
+
+    public void setChangeSignIn2faToSmsOtpSmsTemplateId(String changeSignIn2faToSmsOtpSmsTemplateId) {
+        this.changeSignIn2faToSmsOtpSmsTemplateId = changeSignIn2faToSmsOtpSmsTemplateId;
+    }
+
+    public void setSelfInitiatedCreateUserAndServiceOtpSmsTemplateId(String selfInitiatedCreateUserAndServiceOtpSmsTemplateId) {
+        this.selfInitiatedCreateUserAndServiceOtpSmsTemplateId = selfInitiatedCreateUserAndServiceOtpSmsTemplateId;
+    }
+
+    public void setCreateUserInResponseToInvitationToServiceOtpSmsTemplateId(String createUserInResponseToInvitationToServiceOtpSmsTemplateId) {
+        this.createUserInResponseToInvitationToServiceOtpSmsTemplateId = createUserInResponseToInvitationToServiceOtpSmsTemplateId;
+    }
+
+    public void setInviteUserEmailTemplateId(String inviteUserEmailTemplateId) {
+        this.inviteUserEmailTemplateId = inviteUserEmailTemplateId;
+    }
+
+    public void setInviteUserExistingEmailTemplateId(String inviteUserExistingEmailTemplateId) {
+        this.inviteUserExistingEmailTemplateId = inviteUserExistingEmailTemplateId;
+    }
+
+    public void setInviteServiceEmailTemplateId(String inviteServiceEmailTemplateId) {
+        this.inviteServiceEmailTemplateId = inviteServiceEmailTemplateId;
+    }
+
+    public void setForgottenPasswordEmailTemplateId(String forgottenPasswordEmailTemplateId) {
+        this.forgottenPasswordEmailTemplateId = forgottenPasswordEmailTemplateId;
+    }
+
+    public void setInviteServiceUserExistsEmailTemplateId(String inviteServiceUserExistsEmailTemplateId) {
+        this.inviteServiceUserExistsEmailTemplateId = inviteServiceUserExistsEmailTemplateId;
+    }
+
+    public void setInviteServiceUserDisabledEmailTemplateId(String inviteServiceUserDisabledEmailTemplateId) {
+        this.inviteServiceUserDisabledEmailTemplateId = inviteServiceUserDisabledEmailTemplateId;
+    }
+
+    public void setLiveAccountCreatedEmailTemplateId(String liveAccountCreatedEmailTemplateId) {
+        this.liveAccountCreatedEmailTemplateId = liveAccountCreatedEmailTemplateId;
+    }
+
+    public void setStripeDisputeCreatedEmailTemplateId(String stripeDisputeCreatedEmailTemplateId) {
+        this.stripeDisputeCreatedEmailTemplateId = stripeDisputeCreatedEmailTemplateId;
+    }
+
+    public void setStripeDisputeLostEmailTemplateId(String stripeDisputeLostEmailTemplateId) {
+        this.stripeDisputeLostEmailTemplateId = stripeDisputeLostEmailTemplateId;
+    }
+
+    public void setStripeDisputeLostAndServiceChargedEmailTemplateId(String stripeDisputeLostAndServiceChargedEmailTemplateId) {
+        this.stripeDisputeLostAndServiceChargedEmailTemplateId = stripeDisputeLostAndServiceChargedEmailTemplateId;
+    }
+
+    public void setStripeDisputeEvidenceSubmittedEmailTemplateId(String stripeDisputeEvidenceSubmittedEmailTemplateId) {
+        this.stripeDisputeEvidenceSubmittedEmailTemplateId = stripeDisputeEvidenceSubmittedEmailTemplateId;
+    }
+
+    public void setStripeDisputeWonEmailTemplateId(String stripeDisputeWonEmailTemplateId) {
+        this.stripeDisputeWonEmailTemplateId = stripeDisputeWonEmailTemplateId;
+    }
+
+    public void setNotifyEmailReplyToSupportId(String notifyEmailReplyToSupportId) {
+        this.notifyEmailReplyToSupportId = notifyEmailReplyToSupportId;
     }
 }

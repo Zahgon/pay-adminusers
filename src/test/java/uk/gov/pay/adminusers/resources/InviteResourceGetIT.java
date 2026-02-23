@@ -7,11 +7,11 @@ import uk.gov.pay.adminusers.model.RoleName;
 import uk.gov.pay.adminusers.persistence.dao.RoleDao;
 
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.Response.Status.GONE;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
+import static org.springframework.http.HttpStatus.GONE;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.OK;
 import static uk.gov.pay.adminusers.fixtures.InviteDbFixture.inviteDbFixture;
 
 class InviteResourceGetIT extends IntegrationTest {
@@ -20,7 +20,7 @@ class InviteResourceGetIT extends IntegrationTest {
 
     @BeforeEach
     public void setUp() {
-        adminRole = getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        adminRole = getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
     }
     
     @Test
@@ -38,7 +38,7 @@ class InviteResourceGetIT extends IntegrationTest {
                 .accept(JSON)
                 .get(INVITES_RESOURCE_URL + "/" + inviteCode)
                 .then()
-                .statusCode(OK.getStatusCode())
+                .statusCode(OK.value())
                 .body("email", is(email))
                 .body("telephone_number", is(nullValue()))
                 .body("disabled", is(false))
@@ -69,7 +69,7 @@ class InviteResourceGetIT extends IntegrationTest {
                 .accept(JSON)
                 .get(INVITES_RESOURCE_URL + "/" + inviteCode)
                 .then()
-                .statusCode(OK.getStatusCode())
+                .statusCode(OK.value())
                 .body("email", is(email))
                 .body("telephone_number", is(telephoneNumber))
                 .body("disabled", is(false))
@@ -87,7 +87,7 @@ class InviteResourceGetIT extends IntegrationTest {
                 .accept(JSON)
                 .get(INVITES_RESOURCE_URL + "/" + expiredCode)
                 .then()
-                .statusCode(GONE.getStatusCode());
+                .statusCode(GONE.value());
     }
 
     @Test
@@ -100,7 +100,7 @@ class InviteResourceGetIT extends IntegrationTest {
                 .accept(JSON)
                 .get(INVITES_RESOURCE_URL + "/" + expiredCode)
                 .then()
-                .statusCode(GONE.getStatusCode());
+                .statusCode(GONE.value());
     }
 
     @Test
@@ -111,7 +111,7 @@ class InviteResourceGetIT extends IntegrationTest {
                 .accept(JSON)
                 .get(INVITES_RESOURCE_URL + "/fake-code")
                 .then()
-                .statusCode(NOT_FOUND.getStatusCode());
+                .statusCode(NOT_FOUND.value());
     }
 
     @Test
@@ -127,7 +127,7 @@ class InviteResourceGetIT extends IntegrationTest {
                 .accept(JSON)
                 .get(INVITES_RESOURCE_URL + "?serviceId=" + serviceExternalId)
                 .then()
-                .statusCode(OK.getStatusCode())
+                .statusCode(OK.value())
                 .body("[0].email", is(email))
                 .body("[0].telephone_number", is(nullValue()))
                 .body("[0].disabled", is(false))

@@ -1,20 +1,19 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
-import com.google.inject.persist.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.pay.adminusers.persistence.dao.ForgottenPasswordDao;
 import uk.gov.pay.adminusers.persistence.dao.UserDao;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
+@Service
 public class ResetPasswordService {
 
     private final UserDao userDao;
     private final ForgottenPasswordDao forgottenPasswordDao;
     private final PasswordHasher passwordHasher;
-
-    @Inject
     public ResetPasswordService(UserDao userDao, ForgottenPasswordDao forgottenPasswordDao, PasswordHasher passwordHasher) {
         this.userDao = userDao;
         this.forgottenPasswordDao = forgottenPasswordDao;

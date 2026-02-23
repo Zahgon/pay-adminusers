@@ -21,9 +21,8 @@ import uk.gov.pay.adminusers.service.NotificationService;
 import uk.gov.pay.adminusers.service.ServiceFinder;
 import uk.gov.pay.adminusers.service.UserServices;
 import uk.gov.pay.adminusers.utils.dispute.DisputeReasonMapper;
-import uk.gov.service.payments.commons.queue.exception.QueueException;
+import uk.gov.pay.adminusers.queue.sqs.QueueException;
 
-import jakarta.inject.Inject;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -31,16 +30,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Component;
 
 import static java.lang.String.format;
 import static net.logstash.logback.argument.StructuredArguments.kv;
 import static uk.gov.pay.adminusers.utils.currency.ConvertToCurrency.convertPenceToPounds;
 import static uk.gov.pay.adminusers.utils.date.DisputeEvidenceDueByDateUtil.getPayDueByDate;
-import static uk.gov.service.payments.logging.LoggingKeys.GATEWAY_ACCOUNT_ID;
-import static uk.gov.service.payments.logging.LoggingKeys.LEDGER_EVENT_TYPE;
-import static uk.gov.service.payments.logging.LoggingKeys.PAYMENT_EXTERNAL_ID;
-import static uk.gov.service.payments.logging.LoggingKeys.SERVICE_EXTERNAL_ID;
+import static uk.gov.pay.adminusers.utils.LoggingKeys.GATEWAY_ACCOUNT_ID;
+import static uk.gov.pay.adminusers.utils.LoggingKeys.LEDGER_EVENT_TYPE;
+import static uk.gov.pay.adminusers.utils.LoggingKeys.PAYMENT_EXTERNAL_ID;
+import static uk.gov.pay.adminusers.utils.LoggingKeys.SERVICE_EXTERNAL_ID;
 
+@Component
 public class EventMessageHandler {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy"); // 9 March 2022
@@ -65,8 +66,6 @@ public class EventMessageHandler {
             "subscription_canceled", NO,
             "unrecognized", NO
     );
-
-    @Inject
     public EventMessageHandler(EventSubscriberQueue eventSubscriberQueue,
                                LedgerService ledgerService,
                                NotificationService notificationService,

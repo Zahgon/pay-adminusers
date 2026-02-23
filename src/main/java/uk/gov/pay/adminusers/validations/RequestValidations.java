@@ -14,12 +14,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
+import org.springframework.stereotype.Component;
 
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.math.NumberUtils.isDigits;
 
+@Component
 public class RequestValidations {
 
     public Optional<List<String>> checkIsNumeric(JsonNode payload, String... fieldNames) {

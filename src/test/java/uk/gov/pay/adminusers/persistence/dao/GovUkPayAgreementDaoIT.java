@@ -29,8 +29,8 @@ public class GovUkPayAgreementDaoIT extends DaoTestBase {
 
     @BeforeEach
     public void setUp() {
-        agreementDao = env.getInstance(GovUkPayAgreementDao.class);
-        serviceDao = env.getInstance(ServiceDao.class);
+        agreementDao = env.getBean(GovUkPayAgreementDao.class);
+        serviceDao = env.getBean(ServiceDao.class);
     }
 
     @Test

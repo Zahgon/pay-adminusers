@@ -1,15 +1,16 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
 import uk.gov.pay.adminusers.exception.GovUkPayAgreementNotSignedException;
 import uk.gov.pay.adminusers.persistence.dao.GovUkPayAgreementDao;
 import uk.gov.pay.adminusers.persistence.entity.GovUkPayAgreementEntity;
+import org.springframework.stereotype.Service;
 
-import static jakarta.ws.rs.core.UriBuilder.fromUri;
+import static uk.gov.pay.adminusers.utils.UriPaths.append;
 
+@Service
 public class SendLiveAccountCreatedEmailService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SendLiveAccountCreatedEmailService.class);
@@ -18,8 +19,6 @@ public class SendLiveAccountCreatedEmailService {
     private final GovUkPayAgreementDao govUkPayAgreementDao;
     private final NotificationService notificationService;
     private final String selfserviceServicesUrl;
-    
-    @Inject
     public SendLiveAccountCreatedEmailService(GovUkPayAgreementDao govUkPayAgreementDao,
                                               NotificationService notificationService,
                                               AdminUsersConfig config) {
@@ -32,11 +31,7 @@ public class SendLiveAccountCreatedEmailService {
         GovUkPayAgreementEntity agreement = govUkPayAgreementDao.findByExternalServiceId(serviceExternalId)
                 .orElseThrow(GovUkPayAgreementNotSignedException::new);
 
-        String serviceLiveAccountUrl = fromUri(selfserviceServicesUrl)
-                .path(serviceExternalId)
-                .path(SELFSERVICE_LIVE_ACCOUNT_PATH)
-                .build()
-                .toString();
+        String serviceLiveAccountUrl = append(selfserviceServicesUrl, serviceExternalId, SELFSERVICE_LIVE_ACCOUNT_PATH);
 
         try {
             String notificationId = notificationService.sendLiveAccountCreatedEmail(agreement.getEmail(), serviceLiveAccountUrl);

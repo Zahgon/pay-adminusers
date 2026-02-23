@@ -25,7 +25,7 @@ public class UserResourceGetMultipleIT extends IntegrationTest {
     
     @BeforeEach
     void setUp() throws Exception {
-        adminRole = getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        adminRole = getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
     }
     
     @Test

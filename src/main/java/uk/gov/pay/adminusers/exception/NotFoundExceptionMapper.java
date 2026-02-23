@@ -1,15 +1,21 @@
 package uk.gov.pay.adminusers.exception;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import java.io.IOException;
 
-public class NotFoundExceptionMapper implements ExceptionMapper<NotFoundException> {
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
-    @Override
-    public Response toResponse(NotFoundException exception) {
-        return Response.status(NOT_FOUND).build();
+@RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class NotFoundExceptionMapper {
+
+    @ExceptionHandler(NotFoundException.class)
+    public void toResponse(HttpServletResponse response) throws IOException {
+        response.sendError(NOT_FOUND.value());
     }
-
 }

@@ -1,6 +1,5 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.model.GovUkPayAgreement;
@@ -10,15 +9,15 @@ import uk.gov.pay.adminusers.persistence.entity.ServiceEntity;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 import static java.lang.String.format;
 
+@Service
 public class GovUkPayAgreementService {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(GovUkPayAgreementService.class);
     private final GovUkPayAgreementDao agreementDao;
-    
-    @Inject
     public GovUkPayAgreementService(GovUkPayAgreementDao govUkPayAgreementDao) {
         this.agreementDao = govUkPayAgreementDao;
     }

@@ -11,10 +11,12 @@ import uk.gov.service.payments.commons.model.jsonpatch.JsonPatchRequest;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.springframework.stereotype.Component;
 
 import static java.lang.String.format;
 import static uk.gov.service.payments.commons.api.validation.JsonPatchRequestValidator.throwIfValueNotString;
 
+@Component
 public class InviteRequestValidator {
 
     public static final String FIELD_PASSWORD = "password";

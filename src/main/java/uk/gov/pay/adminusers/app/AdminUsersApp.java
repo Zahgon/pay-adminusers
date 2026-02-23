@@ -1,135 +1,70 @@
 package uk.gov.pay.adminusers.app;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
-import io.dropwizard.configuration.SubstitutingSourceProvider;
-import io.dropwizard.core.Application;
-import io.dropwizard.core.setup.Bootstrap;
-import io.dropwizard.core.setup.Environment;
-import io.dropwizard.db.DataSourceFactory;
-import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
-import io.dropwizard.migrations.MigrationsBundle;
-import io.prometheus.client.CollectorRegistry;
-import io.prometheus.client.dropwizard.DropwizardExports;
-import io.prometheus.client.servlet.jakarta.exporter.MetricsServlet;
-import org.dhatim.dropwizard.sentry.logging.SentryAppenderFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
-import uk.gov.pay.adminusers.app.config.AdminUsersModule;
-import uk.gov.pay.adminusers.app.config.PersistenceServiceInitialiser;
-import uk.gov.pay.adminusers.app.healthchecks.DependentResourceWaitCommand;
-import uk.gov.pay.adminusers.app.healthchecks.MigrateToInitialDbState;
-import uk.gov.pay.adminusers.exception.ConflictExceptionMapper;
-import uk.gov.pay.adminusers.exception.NotFoundExceptionMapper;
-import uk.gov.pay.adminusers.exception.ValidationExceptionMapper;
-import uk.gov.pay.adminusers.expungeandarchive.resource.ExpungeAndArchiveHistoricalDataResource;
-import uk.gov.pay.adminusers.filters.LoggingMDCRequestFilter;
-import uk.gov.pay.adminusers.filters.LoggingMDCResponseFilter;
-import uk.gov.pay.adminusers.queue.managed.EventSubscriberQueueMessageReceiver;
-import uk.gov.pay.adminusers.resources.EmailResource;
-import uk.gov.pay.adminusers.resources.ForgottenPasswordResource;
-import uk.gov.pay.adminusers.resources.HealthCheckResource;
-import uk.gov.pay.adminusers.resources.InvalidEmailRequestExceptionMapper;
-import uk.gov.pay.adminusers.resources.InvalidMerchantDetailsExceptionMapper;
-import uk.gov.pay.adminusers.resources.InviteResource;
-import uk.gov.pay.adminusers.resources.ResetPasswordResource;
-import uk.gov.pay.adminusers.resources.ServiceResource;
-import uk.gov.pay.adminusers.resources.ToolboxEndpointResource;
-import uk.gov.pay.adminusers.resources.UserResource;
-import uk.gov.service.payments.commons.utils.healthchecks.DatabaseHealthCheck;
-import uk.gov.service.payments.commons.utils.metrics.DatabaseMetricsService;
-import uk.gov.service.payments.logging.GovUkPayDropwizardRequestJsonLogLayoutFactory;
-import uk.gov.service.payments.logging.LoggingFilter;
-import uk.gov.service.payments.logging.LogstashConsoleAppenderFactory;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.context.TypeExcludeFilter;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import uk.gov.pay.adminusers.app.commands.DatabaseMigrationCommand;
+import uk.gov.pay.adminusers.app.commands.DependentResourceWaitCommand;
+import uk.gov.pay.adminusers.app.commands.MigrateToInitialDbState;
 
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 
-import static java.util.EnumSet.of;
-import static jakarta.servlet.DispatcherType.REQUEST;
+/**
+ * Entry point of the adminusers service. The first arguments name the command to run, as they always have:
+ * {@code server} runs the service, {@code db migrate} applies the Liquibase change log, {@code migrateToInitialDbState}
+ * creates the initial (selfservice) database state if the database has none and {@code waitOnDependencies} waits
+ * until the database accepts connections. A trailing configuration file argument is accepted and ignored: the service
+ * is configured through environment variables only. Errors without an entity are rendered by the servlet container
+ * itself, so Spring Boot's error controller stays off; migrations run only on request.
+ */
+@SpringBootConfiguration
+@EnableAutoConfiguration(exclude = {ErrorMvcAutoConfiguration.class, LiquibaseAutoConfiguration.class})
+@ComponentScan(basePackages = "uk.gov.pay.adminusers", excludeFilters = {
+        @ComponentScan.Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
+        // The commands run in contexts of their own.
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "uk\\.gov\\.pay\\.adminusers\\.app\\.commands\\..*"),
+        // The admin port's beans belong to the management context only.
+        @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = ManagementContextConfiguration.class)})
+@ConfigurationPropertiesScan
+public class AdminUsersApp {
 
-public class AdminUsersApp extends Application<AdminUsersConfig> {
+    private static final String USAGE = "usage: java -jar pay-adminusers-0.1-SNAPSHOT-allinone.jar "
+            + "{server | db migrate | migrateToInitialDbState | waitOnDependencies} [config file]";
 
-    private static final Logger logger = LoggerFactory.getLogger(AdminUsersApp.class);
-    
-    private static final boolean NON_STRICT_VARIABLE_SUBSTITUTOR = false;
-    private static final String SERVICE_METRICS_NODE = "adminusers";
-    private static final int METRICS_COLLECTION_PERIOD_SECONDS = 30;
-
-    @Override
-    public void initialize(Bootstrap<AdminUsersConfig> bootstrap) {
-        bootstrap.setConfigurationSourceProvider(
-                new SubstitutingSourceProvider(bootstrap.getConfigurationSourceProvider(),
-                        new EnvironmentVariableSubstitutor(NON_STRICT_VARIABLE_SUBSTITUTOR)
-                )
-        );
-
-        bootstrap.addBundle(new MigrationsBundle<>() {
-            @Override
-            public DataSourceFactory getDataSourceFactory(AdminUsersConfig configuration) {
-                return configuration.getDataSourceFactory();
-            }
-        });
-
-        bootstrap.addCommand(new DependentResourceWaitCommand());
-        bootstrap.addCommand(new MigrateToInitialDbState());
-        bootstrap.getObjectMapper().getSubtypeResolver().registerSubtypes(LogstashConsoleAppenderFactory.class);
-        bootstrap.getObjectMapper().getSubtypeResolver().registerSubtypes(SentryAppenderFactory.class);
-        bootstrap.getObjectMapper().getSubtypeResolver().registerSubtypes(GovUkPayDropwizardRequestJsonLogLayoutFactory.class);
+    public static void main(String[] args) {
+        List<String> arguments = List.of(args);
+        if (startsWith(arguments, "server")) {
+            SpringApplication.run(AdminUsersApp.class);
+        } else if (startsWith(arguments, "db", "migrate")) {
+            runToCompletion(DatabaseMigrationCommand.class);
+        } else if (startsWith(arguments, "migrateToInitialDbState")) {
+            runToCompletion(MigrateToInitialDbState.class);
+        } else if (startsWith(arguments, "waitOnDependencies")) {
+            runToCompletion(DependentResourceWaitCommand.class);
+        } else {
+            System.err.println(USAGE);
+            System.exit(1);
+        }
     }
 
-    @Override
-    public void run(AdminUsersConfig configuration, Environment environment) {
-        final Injector injector = Guice.createInjector(new AdminUsersModule(configuration, environment));
-        injector.getInstance(PersistenceServiceInitialiser.class);
-
-        initialiseMetrics(configuration, environment);
-
-        environment.jersey().register(injector.getInstance(LoggingMDCRequestFilter.class));
-        environment.jersey().register(injector.getInstance(LoggingMDCResponseFilter.class));
-        environment.servlets().addFilter("LoggingFilter", new LoggingFilter())
-                .addMappingForUrlPatterns(of(REQUEST), true, "/v1/*");
-
-        environment.healthChecks().register("database", new DatabaseHealthCheck(configuration.getDataSourceFactory()));
-        environment.jersey().register(injector.getInstance(UserResource.class));
-        environment.jersey().register(injector.getInstance(ServiceResource.class));
-        environment.jersey().register(injector.getInstance(ToolboxEndpointResource.class));
-        environment.jersey().register(injector.getInstance(ForgottenPasswordResource.class));
-        environment.jersey().register(injector.getInstance(InviteResource.class));
-        environment.jersey().register(injector.getInstance(ResetPasswordResource.class));
-        environment.jersey().register(injector.getInstance(HealthCheckResource.class));
-        environment.jersey().register(injector.getInstance(EmailResource.class));
-        environment.jersey().register(injector.getInstance(ExpungeAndArchiveHistoricalDataResource.class));
-
-        environment.jersey().register(new JsonProcessingExceptionMapper(true));
-
-        // Register the custom ExceptionMapper(s)
-        environment.jersey().register(new ValidationExceptionMapper());
-        environment.jersey().register(new NotFoundExceptionMapper());
-        environment.jersey().register(new InvalidEmailRequestExceptionMapper());
-        environment.jersey().register(new InvalidMerchantDetailsExceptionMapper());
-        environment.jersey().register(new ConflictExceptionMapper());
-
-        environment.lifecycle().manage(injector.getInstance(EventSubscriberQueueMessageReceiver.class));
+    private static boolean startsWith(List<String> arguments, String... command) {
+        return arguments.size() >= command.length && arguments.subList(0, command.length).equals(List.of(command));
     }
 
-    private void initialiseMetrics(AdminUsersConfig configuration, Environment environment) {
-        DatabaseMetricsService metricsService = new DatabaseMetricsService(configuration.getDataSourceFactory(), environment.metrics(), "adminusers");
-
-        environment
-                .lifecycle()
-                .scheduledExecutorService("metricscollector")
-                .threads(1)
-                .build()
-                .scheduleAtFixedRate(metricsService::updateMetricData, 0, METRICS_COLLECTION_PERIOD_SECONDS / 2, TimeUnit.SECONDS);
-
-        CollectorRegistry collectorRegistry = CollectorRegistry.defaultRegistry;
-        collectorRegistry.register(new DropwizardExports(environment.metrics()));
-        environment.admin().addServlet("prometheusMetrics", new MetricsServlet(collectorRegistry)).addMapping("/metrics");
-    }
-
-    public static void main(String[] args) throws Exception {
-        new AdminUsersApp().run(args);
+    private static void runToCompletion(Class<?> command) {
+        ConfigurableApplicationContext context = new SpringApplicationBuilder(command)
+                .web(WebApplicationType.NONE)
+                .run();
+        System.exit(SpringApplication.exit(context));
     }
 }

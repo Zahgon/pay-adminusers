@@ -13,8 +13,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static java.lang.String.format;
-import static jakarta.ws.rs.core.HttpHeaders.CONTENT_TYPE;
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
+import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 public class LedgerStub {
 
@@ -32,7 +32,7 @@ public class LedgerStub {
 
     public void returnLedgerTransaction(String externalId, LedgerTransaction ledgerTransaction) throws JsonProcessingException {
         ResponseDefinitionBuilder response = aResponse()
-                .withHeader(CONTENT_TYPE, APPLICATION_JSON)
+                .withHeader(CONTENT_TYPE, APPLICATION_JSON_VALUE)
                 .withStatus(200)
                 .withBody(objectMapper.writeValueAsString(ledgerTransaction));
         wireMockServer.stubFor(
@@ -44,7 +44,7 @@ public class LedgerStub {
 
     public void returnLedgerTransactionsForSearch(String gatewayAccountId, LedgerSearchTransactionsResponse ledgerResponse) throws JsonProcessingException {
         ResponseDefinitionBuilder response = aResponse()
-                .withHeader(CONTENT_TYPE, APPLICATION_JSON)
+                .withHeader(CONTENT_TYPE, APPLICATION_JSON_VALUE)
                 .withStatus(200)
                 .withBody(objectMapper.writeValueAsString(ledgerResponse));
         wireMockExtension.stubFor(

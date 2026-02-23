@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty name="environment" source="adminusers.environment"/>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"container":"adminusers","environment":"${environment}"}</customFields>
+        </encoder>
+    </appender>
+
+    <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+        <options>
+            <dsn>${SENTRY_DSN:-https://example.com@dummy/1}</dsn>
+            <environment>${environment}</environment>
+        </options>
+        <minimumEventLevel>ERROR</minimumEventLevel>
+        <minimumBreadcrumbLevel>OFF</minimumBreadcrumbLevel>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="SENTRY"/>
+    </root>
+</configuration>

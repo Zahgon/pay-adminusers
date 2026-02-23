@@ -8,6 +8,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.pay.adminusers.app.config.LinksConfig;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import uk.gov.pay.adminusers.model.Invite;
 import uk.gov.pay.adminusers.model.CreateSelfRegistrationInviteRequest;
 import uk.gov.pay.adminusers.model.Role;
@@ -20,7 +21,6 @@ import uk.gov.pay.adminusers.persistence.entity.RoleEntity;
 import uk.gov.pay.adminusers.persistence.entity.ServiceEntity;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 
-import jakarta.ws.rs.WebApplicationException;
 import java.util.List;
 import java.util.Optional;
 

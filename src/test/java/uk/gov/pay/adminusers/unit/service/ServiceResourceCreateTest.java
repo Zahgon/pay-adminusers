@@ -1,16 +1,16 @@
 package uk.gov.pay.adminusers.unit.service;
 
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import io.dropwizard.testing.junit5.ResourceExtension;
 import io.restassured.path.json.JsonPath;
+import io.restassured.response.Response;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.adminusers.infra.ResourceExtension;
 import uk.gov.pay.adminusers.model.Service;
 import uk.gov.pay.adminusers.persistence.dao.UserDao;
 import uk.gov.pay.adminusers.persistence.entity.ServiceEntity;
@@ -22,20 +22,20 @@ import uk.gov.pay.adminusers.resources.ServiceUpdateOperationValidator;
 import uk.gov.pay.adminusers.service.GovUkPayAgreementService;
 import uk.gov.pay.adminusers.service.SendLiveAccountCreatedEmailService;
 import uk.gov.pay.adminusers.service.ServiceCreator;
-import uk.gov.pay.adminusers.service.ServiceServicesFactory;
+import uk.gov.pay.adminusers.service.ServiceFinder;
+import uk.gov.pay.adminusers.service.ServiceUpdater;
+import uk.gov.pay.adminusers.service.ServiceUserRemover;
 import uk.gov.pay.adminusers.service.StripeAgreementService;
 import uk.gov.pay.adminusers.validations.RequestValidations;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.restassured.http.ContentType.JSON;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -44,21 +44,19 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static uk.gov.pay.adminusers.resources.ServiceResource.FIELD_NAME;
 import static uk.gov.pay.adminusers.service.ServiceUpdater.FIELD_GATEWAY_ACCOUNT_IDS;
 
-@ExtendWith(DropwizardExtensionsSupport.class)
 @ExtendWith(MockitoExtension.class)
 public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
 
     private static final Map<String, Object> PAYLOAD_MAP = new HashMap<>();
 
     private static UserDao mockedUserDao = mock(UserDao.class);
-    private static ServiceServicesFactory mockedServicesFactory = mock(ServiceServicesFactory.class);
-
     private static ServiceCreator serviceCreator = new ServiceCreator(mockedServiceDao, LINKS_BUILDER);
     private static ServiceCreator mockedServiceCreator = mock(ServiceCreator.class);
 
@@ -69,13 +67,17 @@ public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
     private static GovUkPayAgreementService agreementService = mock(GovUkPayAgreementService.class);
     private static SendLiveAccountCreatedEmailService sendLiveAccountCreatedEmailService = mock(SendLiveAccountCreatedEmailService.class);
 
+    @RegisterExtension
     public static final ResourceExtension RESOURCES = ResourceExtension.builder()
             .addResource(new ServiceResource(
                     mockedUserDao,
                     mockedServiceDao,
                     LINKS_BUILDER,
                     serviceRequestValidator,
-                    mockedServicesFactory,
+                    mockedServiceCreator,
+                    mock(ServiceUpdater.class),
+                    mock(ServiceUserRemover.class),
+                    mock(ServiceFinder.class),
                     stripeAgreementService,
                     payAgreementRequestValidator,
                     agreementService,
@@ -84,11 +86,6 @@ public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
 
     @Captor
     private ArgumentCaptor<ServiceEntity> serviceEntityArgumentCaptor;
-
-    @BeforeEach
-    public void setUp() {
-        given(mockedServicesFactory.serviceCreator()).willReturn(mockedServiceCreator);
-    }
 
     @AfterEach
     public void tearDown() {
@@ -102,13 +99,11 @@ public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
         Service service = buildService(Collections.emptyList(), Collections.emptyMap());
         given(mockedServiceCreator.doCreate(Collections.emptyList(), Collections.emptyMap()))
                 .willReturn(service);
-        Response response = RESOURCES.target("/v1/api/services")
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(PAYLOAD_MAP), Response.class);
+        Response response = RESOURCES.target().accept(JSON).contentType(JSON).body(PAYLOAD_MAP).post("/v1/api/services");
 
-        assertThat(response.getStatus(), is(201));
+        assertThat(response.statusCode(), is(201));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("name"), is("System Generated"));
@@ -128,13 +123,11 @@ public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
         Service service = buildService(Collections.emptyList(), Map.of(SupportedLanguage.ENGLISH, EN_SERVICE_NAME));
         given(mockedServiceCreator.doCreate(Collections.emptyList(), Map.of(SupportedLanguage.ENGLISH, EN_SERVICE_NAME)))
                 .willReturn(service);
-        Response response = RESOURCES.target("/v1/api/services")
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(PAYLOAD_MAP), Response.class);
+        Response response = RESOURCES.target().accept(JSON).contentType(JSON).body(PAYLOAD_MAP).post("/v1/api/services");
 
-        assertThat(response.getStatus(), is(201));
+        assertThat(response.statusCode(), is(201));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("external_id"), is(notNullValue()));
@@ -151,13 +144,11 @@ public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
         Service service = buildService(Collections.emptyList(), Map.of(SupportedLanguage.ENGLISH, EN_SERVICE_NAME));
         given(mockedServiceCreator.doCreate(Collections.emptyList(), Map.of(SupportedLanguage.ENGLISH, EN_SERVICE_NAME)))
                 .willReturn(service);
-        Response response = RESOURCES.target("/v1/api/services")
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(PAYLOAD_MAP), Response.class);
+        Response response = RESOURCES.target().accept(JSON).contentType(JSON).body(PAYLOAD_MAP).post("/v1/api/services");
 
-        assertThat(response.getStatus(), is(201));
+        assertThat(response.statusCode(), is(201));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("external_id"), is(notNullValue()));
@@ -178,12 +169,10 @@ public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
         given(mockedServiceCreator.doCreate(gatewayAccounts, Map.of(SupportedLanguage.ENGLISH, EN_SERVICE_NAME)))
                 .willReturn(service);
 
-        Response response = RESOURCES.target("/v1/api/services")
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(PAYLOAD_MAP), Response.class);
-        assertThat(response.getStatus(), is(201));
+        Response response = RESOURCES.target().accept(JSON).contentType(JSON).body(PAYLOAD_MAP).post("/v1/api/services");
+        assertThat(response.statusCode(), is(201));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("name"), is(EN_SERVICE_NAME));
@@ -204,12 +193,10 @@ public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
         given(mockedServiceCreator.doCreate(gatewayAccounts, Map.of(SupportedLanguage.ENGLISH, EN_SERVICE_NAME)))
                 .willReturn(service);
 
-        Response response = RESOURCES.target("/v1/api/services")
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(PAYLOAD_MAP), Response.class);
-        assertThat(response.getStatus(), is(201));
+        Response response = RESOURCES.target().accept(JSON).contentType(JSON).body(PAYLOAD_MAP).post("/v1/api/services");
+        assertThat(response.statusCode(), is(201));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("name"), is(EN_SERVICE_NAME));
@@ -234,13 +221,11 @@ public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
         given(mockedServiceCreator.doCreate(gatewayAccounts, serviceName))
                 .willReturn(service);
 
-        Response response = RESOURCES.target("/v1/api/services")
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(PAYLOAD_MAP), Response.class);
+        Response response = RESOURCES.target().accept(JSON).contentType(JSON).body(PAYLOAD_MAP).post("/v1/api/services");
 
-        assertThat(response.getStatus(), is(201));
+        assertThat(response.statusCode(), is(201));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
 
         assertThat(json.get("name"), is(EN_SERVICE_NAME));
@@ -257,14 +242,13 @@ public class ServiceResourceCreateTest extends ServiceResourceBaseTest {
         PAYLOAD_MAP.put(FIELD_NAME, EN_SERVICE_NAME);
         PAYLOAD_MAP.put(FIELD_GATEWAY_ACCOUNT_IDS, Collections.singletonList(GATEWAY_ACCOUNT_ID));
 
-        given(mockedServicesFactory.serviceCreator()).willReturn(serviceCreator);
+        given(mockedServiceCreator.doCreate(anyList(), anyMap()))
+                .willAnswer(invocation -> serviceCreator.doCreate(invocation.getArgument(0), invocation.getArgument(1)));
         given(mockedServiceDao.checkIfGatewayAccountsUsed(anyList())).willReturn(true);
-        Response response = RESOURCES.target("/v1/api/services")
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(PAYLOAD_MAP), Response.class);
-        assertThat(response.getStatus(), is(409));
+        Response response = RESOURCES.target().accept(JSON).contentType(JSON).body(PAYLOAD_MAP).post("/v1/api/services");
+        assertThat(response.statusCode(), is(409));
 
-        String body = response.readEntity(String.class);
+        String body = response.body().asString();
         JsonPath json = JsonPath.from(body);
         assertThat(json.getList("errors"), hasSize(1));
         assertThat(json.getList("errors"), containsInAnyOrder("One or more of the following gateway account ids has already assigned to another service: [some-gateway-account-id]"));

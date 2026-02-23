@@ -36,6 +36,7 @@ import uk.gov.pay.adminusers.queue.ConnectorTaskQueue;
 import uk.gov.pay.adminusers.queue.model.ConnectorTask;
 import uk.gov.pay.adminusers.queue.model.ServiceArchivedTaskData;
 
+import java.net.URI;
 import java.time.Instant;
 import java.time.InstantSource;
 import java.time.ZonedDateTime;
@@ -45,7 +46,6 @@ import java.util.stream.Collectors;
 
 import static ch.qos.logback.classic.Level.INFO;
 import static java.time.ZoneOffset.UTC;
-import static jakarta.ws.rs.core.Response.serverError;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItems;
@@ -58,6 +58,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 import static uk.gov.pay.adminusers.fixtures.LedgerSearchTransactionsResponseFixture.aLedgerSearchTransactionsResponseFixture;
 import static uk.gov.pay.adminusers.fixtures.LedgerTransactionFixture.aLedgerTransactionFixture;
@@ -448,7 +449,7 @@ class ExpungeAndArchiveHistoricalDataServiceTest {
         void shouldLogAndContinueArchivingServicesForLedgerErrors() {
             when(mockExpungeAndArchiveConfig.getArchiveServicesAfterDays()).thenReturn(7);
 
-            when(mockLedgerService.searchTransactions(gatewayAccountId1, 1)).thenThrow(new LedgerException(serverError().build()));
+            when(mockLedgerService.searchTransactions(gatewayAccountId1, 1)).thenThrow(new LedgerException(URI.create("http://ledger/v1/transaction"), INTERNAL_SERVER_ERROR));
             serviceEntity = ServiceEntityFixture
                     .aServiceEntity()
                     .withArchived(false)

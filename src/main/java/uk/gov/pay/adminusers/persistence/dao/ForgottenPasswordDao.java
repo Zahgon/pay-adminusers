@@ -1,26 +1,24 @@
 package uk.gov.pay.adminusers.persistence.dao;
 
-import com.google.inject.Provider;
-import com.google.inject.name.Named;
-import com.google.inject.persist.Transactional;
-import jakarta.inject.Inject;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
+import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
 import uk.gov.pay.adminusers.persistence.entity.ForgottenPasswordEntity;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 
+@Repository
 @Transactional
 public class ForgottenPasswordDao extends JpaDao<ForgottenPasswordEntity> {
 
     private final Integer forgottenPasswordExpiryMinutes;
 
-    @Inject
-    protected ForgottenPasswordDao(Provider<EntityManager> entityManager,
-                                   @Named("FORGOTTEN_PASSWORD_EXPIRY_MINUTES") Integer forgottenPasswordExpiryMinutes) {
+    protected ForgottenPasswordDao(EntityManager entityManager, AdminUsersConfig configuration) {
         super(entityManager, ForgottenPasswordEntity.class);
-        this.forgottenPasswordExpiryMinutes = forgottenPasswordExpiryMinutes;
+        this.forgottenPasswordExpiryMinutes = configuration.getForgottenPasswordExpiryMinutes();
     }
 
     public Optional<ForgottenPasswordEntity> findNonExpiredByCode(String code) {
@@ -29,7 +27,7 @@ public class ForgottenPasswordDao extends JpaDao<ForgottenPasswordEntity> {
 
         ZonedDateTime expiryDateTime = ZonedDateTime.now(ZoneId.of("UTC")).minusMinutes(forgottenPasswordExpiryMinutes);
 
-        return entityManager.get()
+        return entityManager
                 .createQuery(query, ForgottenPasswordEntity.class)
                 .setParameter("code", code)
                 .setParameter("expiry", expiryDateTime)
@@ -40,7 +38,7 @@ public class ForgottenPasswordDao extends JpaDao<ForgottenPasswordEntity> {
         String query = "DELETE FROM ForgottenPasswordEntity" +
                 " WHERE createdAt < :deleteRecordsBeforeDate";
 
-        return entityManager.get()
+        return entityManager
                 .createQuery(query)
                 .setParameter("deleteRecordsBeforeDate", deleteRecordsBeforeDate)
                 .executeUpdate();

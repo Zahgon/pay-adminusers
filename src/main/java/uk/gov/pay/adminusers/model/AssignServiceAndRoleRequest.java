@@ -2,10 +2,10 @@ package uk.gov.pay.adminusers.model;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import io.dropwizard.validation.ValidationMethod;
+import uk.gov.pay.adminusers.validations.ValidationMethod;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.ws.rs.WebApplicationException;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record AssignServiceAndRoleRequest(

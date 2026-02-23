@@ -7,14 +7,13 @@ import org.apache.commons.lang3.NotImplementedException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
-import uk.gov.pay.adminusers.infra.SqsTestDocker;
-import uk.gov.service.payments.commons.queue.model.QueueMessage;
+import uk.gov.pay.adminusers.queue.sqs.QueueMessage;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class EventFixtureUtil {
 
-    public static String insert(SqsClient sqsClient, String eventType, String serviceId, Boolean live, String resourceExternalId,
+    public static String insert(SqsClient sqsClient, String queueUrl, String eventType, String serviceId, Boolean live, String resourceExternalId,
                                 String parentResourceExternalId, String eventData) {
         String messageBody = String.format("{" +
                         "\"resource_external_id\": \"%s\"," +
@@ -33,7 +32,7 @@ public class EventFixtureUtil {
         );
 
         SendMessageRequest messageRequest = SendMessageRequest.builder()
-                .queueUrl(SqsTestDocker.getQueueUrl("event-queue"))
+                .queueUrl(queueUrl)
                 .messageBody(messageBody)
                 .build();
         SendMessageResponse result = sqsClient.sendMessage(messageRequest);

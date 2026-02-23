@@ -40,10 +40,10 @@ class InviteDaoIT extends DaoTestBase {
 
     @BeforeEach
     public void before() {
-        inviteDao = env.getInstance(InviteDao.class);
-        roleDao = env.getInstance(RoleDao.class);
-        serviceDao = env.getInstance(ServiceDao.class);
-        userDao = env.getInstance(UserDao.class);
+        inviteDao = env.getBean(InviteDao.class);
+        roleDao = env.getBean(RoleDao.class);
+        serviceDao = env.getBean(ServiceDao.class);
+        userDao = env.getBean(UserDao.class);
         adminRoleEntity = roleDao.findByRoleName(RoleName.ADMIN).get();
     }
 

@@ -14,12 +14,6 @@ import java.util.Locale;
 import java.util.Map;
 
 import static java.lang.String.format;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.CONFLICT;
-import static jakarta.ws.rs.core.Response.Status.CREATED;
-import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.PRECONDITION_FAILED;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItems;
@@ -27,6 +21,12 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomInt;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 import static uk.gov.pay.adminusers.fixtures.InviteDbFixture.inviteDbFixture;
@@ -47,7 +47,7 @@ class InviteResourceCreateInviteToJoinServiceIT extends IntegrationTest {
 
         service = serviceDbFixture(databaseHelper).insertService();
         
-        roleDao = getInjector().getInstance(RoleDao.class);
+        roleDao = getBean(RoleDao.class);
         adminRole = roleDao.findByRoleName(RoleName.ADMIN).get().toRole();
 
         String username = randomUuid();
@@ -76,7 +76,7 @@ class InviteResourceCreateInviteToJoinServiceIT extends IntegrationTest {
                 .contentType(ContentType.JSON)
                 .post(CREATE_INVITE_TO_JOIN_SERVICE_RESOURCE_URL)
                 .then()
-                .statusCode(CREATED.getStatusCode())
+                .statusCode(CREATED.value())
                 .body("email", is(email.toLowerCase(Locale.ENGLISH)))
                 .body("telephone_number", is(nullValue()))
                 .body("is_invite_to_join_service", is(true))
@@ -110,7 +110,7 @@ class InviteResourceCreateInviteToJoinServiceIT extends IntegrationTest {
                 .accept(ContentType.JSON)
                 .post(CREATE_INVITE_TO_JOIN_SERVICE_RESOURCE_URL)
                 .then()
-                .statusCode(CONFLICT.getStatusCode())
+                .statusCode(CONFLICT.value())
                 .body("errors", hasSize(1))
                 .body("errors", hasItems(format("invite with email [%s] already exists", existingUserEmail)));
     }
@@ -146,7 +146,7 @@ class InviteResourceCreateInviteToJoinServiceIT extends IntegrationTest {
                 .accept(ContentType.JSON)
                 .post(CREATE_INVITE_TO_JOIN_SERVICE_RESOURCE_URL)
                 .then()
-                .statusCode(PRECONDITION_FAILED.getStatusCode())
+                .statusCode(PRECONDITION_FAILED.value())
                 .body("errors", hasSize(1))
                 .body("errors", hasItems(format("user [%s] already in service [%s]", user.getExternalId(), serviceExternalId)));
     }
@@ -168,7 +168,7 @@ class InviteResourceCreateInviteToJoinServiceIT extends IntegrationTest {
                 .accept(ContentType.JSON)
                 .post(CREATE_INVITE_TO_JOIN_SERVICE_RESOURCE_URL)
                 .then()
-                .statusCode(NOT_FOUND.getStatusCode());
+                .statusCode(NOT_FOUND.value());
     }
 
     @Test
@@ -187,7 +187,7 @@ class InviteResourceCreateInviteToJoinServiceIT extends IntegrationTest {
                 .accept(ContentType.JSON)
                 .post(CREATE_INVITE_TO_JOIN_SERVICE_RESOURCE_URL)
                 .then()
-                .statusCode(BAD_REQUEST.getStatusCode())
+                .statusCode(BAD_REQUEST.value())
                 .body("message", is("Unable to process JSON"))
                 .body("details", containsString("\"non-existing-role\": not one of the values accepted for Enum class: [view-and-initiate-moto, view-only, view-and-refund, super-admin, view-refund-and-initiate-moto, admin]"));
     }
@@ -209,7 +209,7 @@ class InviteResourceCreateInviteToJoinServiceIT extends IntegrationTest {
                 .contentType(ContentType.JSON)
                 .post(CREATE_INVITE_TO_JOIN_SERVICE_RESOURCE_URL)
                 .then()
-                .statusCode(FORBIDDEN.getStatusCode());
+                .statusCode(FORBIDDEN.value());
     }
 
     @Test
@@ -235,7 +235,7 @@ class InviteResourceCreateInviteToJoinServiceIT extends IntegrationTest {
                 .contentType(ContentType.JSON)
                 .post(CREATE_INVITE_TO_JOIN_SERVICE_RESOURCE_URL)
                 .then()
-                .statusCode(FORBIDDEN.getStatusCode());
+                .statusCode(FORBIDDEN.value());
 
     }
 
@@ -263,7 +263,7 @@ class InviteResourceCreateInviteToJoinServiceIT extends IntegrationTest {
                 .contentType(ContentType.JSON)
                 .post(CREATE_INVITE_TO_JOIN_SERVICE_RESOURCE_URL)
                 .then()
-                .statusCode(FORBIDDEN.getStatusCode());
+                .statusCode(FORBIDDEN.value());
     }
 
     @Test

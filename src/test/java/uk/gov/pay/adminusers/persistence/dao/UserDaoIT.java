@@ -53,9 +53,9 @@ public class UserDaoIT extends DaoTestBase {
 
     @BeforeEach
     public void before() {
-        userDao = env.getInstance(UserDao.class);
-        serviceDao = env.getInstance(ServiceDao.class);
-        roleDao = env.getInstance(RoleDao.class);
+        userDao = env.getBean(UserDao.class);
+        serviceDao = env.getBean(ServiceDao.class);
+        roleDao = env.getBean(RoleDao.class);
         databaseHelper.truncateAllData();
         adminRole = roleDao.findByRoleName(RoleName.ADMIN).get().toRole();
         viewOnlyRole = roleDao.findByRoleName(RoleName.VIEW_ONLY).get().toRole();

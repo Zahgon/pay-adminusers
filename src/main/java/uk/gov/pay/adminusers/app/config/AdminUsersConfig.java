@@ -1,19 +1,23 @@
 package uk.gov.pay.adminusers.app.config;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.core.Configuration;
-import io.dropwizard.db.DataSourceFactory;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
 import java.net.URI;
 import java.util.Optional;
 
-public class AdminUsersConfig extends Configuration {
+/**
+ * Settings of the adminusers service, bound from the {@code adminusers} section of {@code application.yaml}, which
+ * takes them from the environment variables the service has always used, with the same defaults.
+ */
+@Validated
+@ConfigurationProperties(prefix = "adminusers")
+public class AdminUsersConfig {
 
-    @Valid
     @NotNull
-    private DataSourceFactory dataSourceFactory;
+    private String environment;
 
     @Valid
     @NotNull
@@ -55,30 +59,25 @@ public class AdminUsersConfig extends Configuration {
     private ExpungeAndArchiveDataConfig expungeAndArchiveDataConfig;
 
     @NotNull
-    @JsonProperty("ledgerBaseURL")
     private String ledgerBaseUrl;
 
     @Valid
     @NotNull
     private RestClientConfig restClientConfig;
 
-    @JsonProperty("secondFactorAuthentication")
+    private URI ecsContainerMetadataUriV4;
+
     public SecondFactorAuthConfiguration getSecondFactorAuthConfiguration() {
         return secondFactorAuthConfiguration;
     }
 
-    @JsonProperty("database")
-    public DataSourceFactory getDataSourceFactory() {
-        return dataSourceFactory;
-    }
-
-    @JsonProperty("jpa")
     public JPAConfiguration getJpaConfiguration() {
         return jpaConfiguration;
     }
 
-    @JsonProperty("ecsContainerMetadataUriV4")
-    private URI ecsContainerMetadataUriV4;
+    public String getEnvironment() {
+        return environment;
+    }
 
     public String getBaseUrl() {
         return baseUrl;
@@ -91,13 +90,9 @@ public class AdminUsersConfig extends Configuration {
     public LinksConfig getLinks() {
         return links;
     }
-
-    @JsonProperty("notify")
     public NotifyConfiguration getNotifyConfiguration() {
         return notifyConfiguration;
     }
-
-    @JsonProperty("notifyDirectDebit")
     public NotifyDirectDebitConfiguration getNotifyDirectDebitConfiguration() {
         return notifyDirectDebitConfiguration;
     }
@@ -105,13 +100,9 @@ public class AdminUsersConfig extends Configuration {
     public Integer getForgottenPasswordExpiryMinutes() {
         return forgottenPasswordExpiryMinutes;
     }
-
-    @JsonProperty("sqs")
     public SqsConfig getSqsConfig() {
         return sqsConfig;
     }
-
-    @JsonProperty("eventSubscriberQueue")
     public EventSubscriberQueueConfig getEventSubscriberQueueConfig() {
         return eventSubscriberQueueConfig;
     }
@@ -134,5 +125,65 @@ public class AdminUsersConfig extends Configuration {
 
     public ConnectorTaskQueueConfig getConnectorTaskQueueConfig() {
         return connectorTaskQueueConfig;
+    }
+
+    public void setEnvironment(String environment) {
+        this.environment = environment;
+    }
+
+    public void setJpaConfiguration(JPAConfiguration jpaConfiguration) {
+        this.jpaConfiguration = jpaConfiguration;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
+
+    public void setLoginAttemptCap(Integer loginAttemptCap) {
+        this.loginAttemptCap = loginAttemptCap;
+    }
+
+    public void setNotifyConfiguration(NotifyConfiguration notifyConfiguration) {
+        this.notifyConfiguration = notifyConfiguration;
+    }
+
+    public void setNotifyDirectDebitConfiguration(NotifyDirectDebitConfiguration notifyDirectDebitConfiguration) {
+        this.notifyDirectDebitConfiguration = notifyDirectDebitConfiguration;
+    }
+
+    public void setForgottenPasswordExpiryMinutes(Integer forgottenPasswordExpiryMinutes) {
+        this.forgottenPasswordExpiryMinutes = forgottenPasswordExpiryMinutes;
+    }
+
+    public void setSecondFactorAuthConfiguration(SecondFactorAuthConfiguration secondFactorAuthConfiguration) {
+        this.secondFactorAuthConfiguration = secondFactorAuthConfiguration;
+    }
+
+    public void setSqsConfig(SqsConfig sqsConfig) {
+        this.sqsConfig = sqsConfig;
+    }
+
+    public void setEventSubscriberQueueConfig(EventSubscriberQueueConfig eventSubscriberQueueConfig) {
+        this.eventSubscriberQueueConfig = eventSubscriberQueueConfig;
+    }
+
+    public void setConnectorTaskQueueConfig(ConnectorTaskQueueConfig connectorTaskQueueConfig) {
+        this.connectorTaskQueueConfig = connectorTaskQueueConfig;
+    }
+
+    public void setExpungeAndArchiveDataConfig(ExpungeAndArchiveDataConfig expungeAndArchiveDataConfig) {
+        this.expungeAndArchiveDataConfig = expungeAndArchiveDataConfig;
+    }
+
+    public void setLedgerBaseUrl(String ledgerBaseUrl) {
+        this.ledgerBaseUrl = ledgerBaseUrl;
+    }
+
+    public void setRestClientConfig(RestClientConfig restClientConfig) {
+        this.restClientConfig = restClientConfig;
+    }
+
+    public void setEcsContainerMetadataUriV4(URI ecsContainerMetadataUriV4) {
+        this.ecsContainerMetadataUriV4 = ecsContainerMetadataUriV4;
     }
 }

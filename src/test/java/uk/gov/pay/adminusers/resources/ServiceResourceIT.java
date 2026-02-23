@@ -42,7 +42,7 @@ public class ServiceResourceIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() {
-        RoleDao roleDao = getInjector().getInstance(RoleDao.class);
+        RoleDao roleDao = getBean(RoleDao.class);
         adminRole = roleDao.findByRoleName(RoleName.ADMIN).get().toRole();
         viewRole = roleDao.findByRoleName(RoleName.VIEW_ONLY).get().toRole();
         service = serviceDbFixture(databaseHelper).insertService();

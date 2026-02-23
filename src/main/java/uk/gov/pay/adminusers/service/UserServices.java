@@ -1,10 +1,8 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
-import com.google.inject.Provider;
-import com.google.inject.name.Named;
-import com.google.inject.persist.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
+import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.model.PatchRequest;
 import uk.gov.pay.adminusers.model.SecondFactorMethod;
@@ -25,6 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.springframework.stereotype.Service;
 
 import static java.lang.Boolean.parseBoolean;
 import static java.lang.Integer.parseInt;
@@ -37,6 +36,7 @@ import static uk.gov.pay.adminusers.model.PatchRequest.PATH_SESSION_VERSION;
 import static uk.gov.pay.adminusers.model.PatchRequest.PATH_TELEPHONE_NUMBER;
 import static uk.gov.pay.adminusers.model.SecondFactorMethod.SMS;
 
+@Service
 public class UserServices {
 
     private static Logger logger = LoggerFactory.getLogger(UserServices.class);
@@ -46,19 +46,15 @@ public class UserServices {
     private final LinksBuilder linksBuilder;
     private final Integer loginAttemptCap;
     private final SecondFactorAuthenticator secondFactorAuthenticator;
-
-    @Inject
     public UserServices(UserDao userDao,
                         PasswordHasher passwordHasher,
                         LinksBuilder linksBuilder,
-                        @Named("LOGIN_ATTEMPT_CAP") Integer loginAttemptCap,
-                        Provider<NotificationService> userNotificationService, 
-                        SecondFactorAuthenticator secondFactorAuthenticator, 
-                        ServiceFinder serviceFinder) {
+                        AdminUsersConfig configuration,
+                        SecondFactorAuthenticator secondFactorAuthenticator) {
         this.userDao = userDao;
         this.passwordHasher = passwordHasher;
         this.linksBuilder = linksBuilder;
-        this.loginAttemptCap = loginAttemptCap;
+        this.loginAttemptCap = configuration.getLoginAttemptCap();
         this.secondFactorAuthenticator = secondFactorAuthenticator;
     }
 

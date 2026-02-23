@@ -1,6 +1,5 @@
 package uk.gov.pay.adminusers.resources;
 
-
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 import uk.gov.pay.adminusers.fixtures.UserDbFixture;
@@ -8,13 +7,13 @@ import uk.gov.pay.adminusers.fixtures.UserDbFixture;
 import java.util.Locale;
 import java.util.Map;
 
-import static jakarta.ws.rs.core.Response.Status.CONFLICT;
-import static jakarta.ws.rs.core.Response.Status.CREATED;
-import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 
 class InviteResourceCreateSelfRegistrationInviteIT extends IntegrationTest {
@@ -32,7 +31,7 @@ class InviteResourceCreateSelfRegistrationInviteIT extends IntegrationTest {
                 .contentType(ContentType.JSON)
                 .post(CREATE_SELF_REGISTRATION_INVITE_URL)
                 .then()
-                .statusCode(CREATED.getStatusCode())
+                .statusCode(CREATED.value())
                 .body("email", is(email.toLowerCase(Locale.ENGLISH)))
                 .body("is_invite_to_join_service", is(false))
                 .body("_links", hasSize(2))
@@ -82,7 +81,7 @@ class InviteResourceCreateSelfRegistrationInviteIT extends IntegrationTest {
                 .contentType(ContentType.JSON)
                 .post(CREATE_SELF_REGISTRATION_INVITE_URL)
                 .then()
-                .statusCode(FORBIDDEN.getStatusCode())
+                .statusCode(FORBIDDEN.value())
                 .body("errors", hasSize(1))
                 .body("errors", hasItems("Email [" + email + "] is not a valid public sector email"));
     }
@@ -102,7 +101,7 @@ class InviteResourceCreateSelfRegistrationInviteIT extends IntegrationTest {
                 .contentType(ContentType.JSON)
                 .post(CREATE_SELF_REGISTRATION_INVITE_URL)
                 .then()
-                .statusCode(CONFLICT.getStatusCode())
+                .statusCode(CONFLICT.value())
                 .body("errors", hasSize(1))
                 .body("errors", hasItems("email [" + email + "] already exists"));
     }

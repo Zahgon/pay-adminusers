@@ -1,7 +1,6 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
-import com.google.inject.persist.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.app.config.LinksConfig;
@@ -18,16 +17,18 @@ import uk.gov.service.payments.commons.model.SupportedLanguage;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toUnmodifiableList;
-import static jakarta.ws.rs.core.UriBuilder.fromUri;
+import static uk.gov.pay.adminusers.utils.UriPaths.append;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.conflictingInvite;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.forbiddenOperationException;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.undefinedRoleException;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.userAlreadyInService;
 
+@Service
 public class JoinServiceInviteCreator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JoinServiceInviteCreator.class);
@@ -39,8 +40,6 @@ public class JoinServiceInviteCreator {
     private final NotificationService notificationService;
     private final ServiceDao serviceDao;
     private final SecondFactorAuthenticator secondFactorAuthenticator;
-
-    @Inject
     public JoinServiceInviteCreator(InviteDao inviteDao,
                                     UserDao userDao,
                                     RoleDao roleDao,
@@ -80,7 +79,7 @@ public class JoinServiceInviteCreator {
         if (!validInvitesToTheSameService.isEmpty()) {
             InviteEntity existingInvite = validInvitesToTheSameService.get(0);
             if (createInviteToJoinServiceRequest.getSender().equals(existingInvite.getSender().getExternalId())) {
-                String inviteUrl = fromUri(linksConfig.getSelfserviceInvitesUrl()).path(existingInvite.getCode()).build().toString();
+                String inviteUrl = append(linksConfig.getSelfserviceInvitesUrl(), existingInvite.getCode());
                 existingUser.ifPresentOrElse(
                         userEntity -> {
                             ServiceEntity serviceEntity = existingInvite.getService().orElseThrow(() -> AdminUsersExceptions.existingUserInviteDoesNotHaveService(existingInvite.getCode()));
@@ -107,7 +106,7 @@ public class JoinServiceInviteCreator {
                         inviteEntity.setSender(userSender.get());
                         inviteEntity.setService(serviceEntity);
                         inviteDao.persist(inviteEntity);
-                        String inviteUrl = fromUri(linksConfig.getSelfserviceInvitesUrl()).path(inviteEntity.getCode()).build().toString();
+                        String inviteUrl = append(linksConfig.getSelfserviceInvitesUrl(), inviteEntity.getCode());
                         existingUser.ifPresentOrElse(
                                 userEntity -> sendInviteExistingUserToServiceNotification(inviteEntity, inviteUrl, serviceEntity),
                                 () -> sendNewUserInviteNotification(inviteEntity, inviteUrl)

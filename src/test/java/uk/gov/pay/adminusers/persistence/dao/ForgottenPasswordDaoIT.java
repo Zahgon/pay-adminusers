@@ -37,8 +37,8 @@ class ForgottenPasswordDaoIT extends DaoTestBase {
 
     @BeforeEach
     public void before() {
-        userDao = env.getInstance(UserDao.class);
-        forgottenPasswordDao = env.getInstance(ForgottenPasswordDao.class);
+        userDao = env.getBean(UserDao.class);
+        forgottenPasswordDao = env.getBean(ForgottenPasswordDao.class);
     }
 
     @Test

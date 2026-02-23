@@ -9,10 +9,6 @@ import uk.gov.pay.adminusers.persistence.dao.RoleDao;
 import java.util.Map;
 
 import static java.lang.String.format;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.CONFLICT;
-import static jakarta.ws.rs.core.Response.Status.GONE;
-import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasKey;
@@ -20,6 +16,10 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.GONE;
+import static org.springframework.http.HttpStatus.OK;
 import static uk.gov.pay.adminusers.app.util.RandomIdGenerator.randomUuid;
 import static uk.gov.pay.adminusers.fixtures.InviteDbFixture.inviteDbFixture;
 import static uk.gov.pay.adminusers.fixtures.UserDbFixture.userDbFixture;
@@ -30,7 +30,7 @@ class InviteResourceServiceCompleteIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() {
-        adminRole = getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        adminRole = getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
     }
     
     @Test
@@ -52,7 +52,7 @@ class InviteResourceServiceCompleteIT extends IntegrationTest {
                 .body(mapper.writeValueAsString(payload))
                 .post(INVITES_RESOURCE_URL + "/" + inviteCode + "/complete")
                 .then()
-                .statusCode(OK.getStatusCode())
+                .statusCode(OK.value())
                 .body("invite._links", hasSize(1))
                 .body("invite._links[0].href", matchesPattern("^http://localhost:8080/v1/api/users/[0-9a-z]{32}$"))
                 .body("invite._links[0].rel", is("user"))
@@ -82,7 +82,7 @@ class InviteResourceServiceCompleteIT extends IntegrationTest {
                 .body(mapper.writeValueAsString(payload))
                 .post(INVITES_RESOURCE_URL + "/" + inviteCode + "/complete")
                 .then()
-                .statusCode(BAD_REQUEST.getStatusCode())
+                .statusCode(BAD_REQUEST.value())
                 .body(containsString("BAD_VALUE"));
     }
 
@@ -105,14 +105,14 @@ class InviteResourceServiceCompleteIT extends IntegrationTest {
                 .body(mapper.writeValueAsString(payload))
                 .post(INVITES_RESOURCE_URL + "/" + inviteCode + "/complete")
                 .then()
-                .statusCode(OK.getStatusCode());
+                .statusCode(OK.value());
 
         givenSetup()
                 .when()
                 .body(mapper.writeValueAsString(payload))
                 .post(INVITES_RESOURCE_URL + "/" + inviteCode + "/complete")
                 .then()
-                .statusCode(GONE.getStatusCode());
+                .statusCode(GONE.value());
     }
 
     @Test
@@ -139,7 +139,7 @@ class InviteResourceServiceCompleteIT extends IntegrationTest {
                 .body(mapper.writeValueAsString(payload))
                 .post(INVITES_RESOURCE_URL + "/" + inviteCode + "/complete")
                 .then()
-                .statusCode(CONFLICT.getStatusCode());
+                .statusCode(CONFLICT.value());
     }
 
     @Test
@@ -162,7 +162,7 @@ class InviteResourceServiceCompleteIT extends IntegrationTest {
                 .body(mapper.writeValueAsString(payload))
                 .post(INVITES_RESOURCE_URL + "/" + inviteCode + "/complete")
                 .then()
-                .statusCode(GONE.getStatusCode());
+                .statusCode(GONE.value());
     }
 
 }

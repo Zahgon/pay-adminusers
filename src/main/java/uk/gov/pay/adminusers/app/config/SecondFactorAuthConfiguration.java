@@ -21,4 +21,11 @@ public class SecondFactorAuthConfiguration {
         return timeWindowInSeconds * 1000L;
     }
 
+    public void setTimeWindowInSeconds(int timeWindowInSeconds) {
+        this.timeWindowInSeconds = timeWindowInSeconds;
+    }
+
+    public void setValidTimeWindows(int validTimeWindows) {
+        this.validTimeWindows = validTimeWindows;
+    }
 }

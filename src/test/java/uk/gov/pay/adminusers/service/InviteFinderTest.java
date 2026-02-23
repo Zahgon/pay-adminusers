@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import uk.gov.pay.adminusers.model.Invite;
 import uk.gov.pay.adminusers.model.Role;
 import uk.gov.pay.adminusers.model.RoleName;
@@ -14,7 +15,6 @@ import uk.gov.pay.adminusers.persistence.entity.InviteEntity;
 import uk.gov.pay.adminusers.persistence.entity.RoleEntity;
 import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 
-import jakarta.ws.rs.WebApplicationException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;

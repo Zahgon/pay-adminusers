@@ -1,9 +1,8 @@
 package uk.gov.pay.adminusers.persistence.dao;
 
 
-import com.google.inject.Inject;
-import com.google.inject.Provider;
-import com.google.inject.persist.Transactional;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.pay.adminusers.model.RoleName;
 import uk.gov.pay.adminusers.persistence.entity.RoleEntity;
 
@@ -17,13 +16,12 @@ import java.util.Optional;
  * </p>
  *     @see uk.gov.pay.adminusers.persistence.entity.RoleEntity
  */
+@Repository
 @Transactional
 public class RoleDao {
 
-    private final Provider<EntityManager> entityManager;
-
-    @Inject
-    public RoleDao(Provider<EntityManager> entityManager){
+    private final EntityManager entityManager;
+    public RoleDao(EntityManager entityManager){
         this.entityManager = entityManager;
     }
 
@@ -32,7 +30,7 @@ public class RoleDao {
         String query = "SELECT r FROM RoleEntity r " +
                 "WHERE r.roleName = :roleName";
 
-        return entityManager.get()
+        return entityManager
                 .createQuery(query, RoleEntity.class)
                 .setParameter("roleName", roleName)
                 .getResultList().stream().findFirst();

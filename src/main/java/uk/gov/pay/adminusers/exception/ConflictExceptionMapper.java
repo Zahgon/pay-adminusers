@@ -1,20 +1,25 @@
 package uk.gov.pay.adminusers.exception;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
 import java.util.List;
 import java.util.Map;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 
-public class ConflictExceptionMapper implements ExceptionMapper<ConflictException> {
+@RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class ConflictExceptionMapper {
 
-    @Override
-    public Response toResponse(ConflictException exception) {
-        return Response
-                .status(Response.Status.CONFLICT)
-                .entity(Map.of("errors", List.of(exception.getMessage())))
-                .type(APPLICATION_JSON_TYPE)
-                .build();
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, List<String>>> toResponse(ConflictException exception) {
+        return ResponseEntity.status(CONFLICT)
+                .contentType(APPLICATION_JSON)
+                .body(Map.of("errors", List.of(exception.getMessage())));
     }
 }

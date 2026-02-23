@@ -8,6 +8,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.pay.adminusers.app.config.LinksConfig;
+import uk.gov.pay.adminusers.exception.WebApplicationException;
 import uk.gov.pay.adminusers.model.Invite;
 import uk.gov.pay.adminusers.model.CreateInviteToJoinServiceRequest;
 import uk.gov.pay.adminusers.model.Role;
@@ -29,7 +30,6 @@ import uk.gov.pay.adminusers.persistence.entity.UserEntity;
 import uk.gov.pay.adminusers.persistence.entity.service.ServiceNameEntity;
 import uk.gov.service.payments.commons.model.SupportedLanguage;
 
-import jakarta.ws.rs.WebApplicationException;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;

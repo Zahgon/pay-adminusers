@@ -3,23 +3,22 @@ package uk.gov.pay.adminusers.utils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.Resources;
-import com.google.inject.Inject;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.stereotype.Component;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toUnmodifiableMap;
 
+@Component
 public class CountryConverter {
 
     private static final String COUNTRIES_FILE_PATH = "countries.json";
     private final ObjectMapper objectMapper;
     private final Map<String, String> countries;
-
-    @Inject
     public CountryConverter(ObjectMapper objectMapper) throws IOException {
         this.objectMapper = objectMapper;
         String textCountries = Resources.toString(Resources.getResource(COUNTRIES_FILE_PATH), UTF_8);

@@ -6,20 +6,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
 import uk.gov.pay.adminusers.queue.model.ConnectorTask;
-import uk.gov.service.payments.commons.queue.exception.QueueException;
-import uk.gov.service.payments.commons.queue.model.QueueMessage;
-import uk.gov.service.payments.commons.queue.sqs.AbstractQueue;
-import uk.gov.service.payments.commons.queue.sqs.SqsQueueService;
+import uk.gov.pay.adminusers.queue.sqs.QueueException;
+import uk.gov.pay.adminusers.queue.sqs.QueueMessage;
+import uk.gov.pay.adminusers.queue.sqs.AbstractQueue;
+import uk.gov.pay.adminusers.queue.sqs.SqsQueueService;
+import org.springframework.stereotype.Component;
 
-import jakarta.inject.Inject;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
+@Component
 public class ConnectorTaskQueue extends AbstractQueue {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectorTaskQueue.class);
-    
-    @Inject
     public ConnectorTaskQueue(SqsQueueService sqsQueueService, AdminUsersConfig adminUsersConfig, ObjectMapper objectMapper) {
         super(sqsQueueService, objectMapper, adminUsersConfig.getSqsConfig().getConnectorTasksQueueUrl(),
                 adminUsersConfig.getConnectorTaskQueueConfig().getFailedMessageRetryDelayInSeconds());

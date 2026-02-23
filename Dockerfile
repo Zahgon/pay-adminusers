@@ -30,7 +30,6 @@ EXPOSE 8081
 WORKDIR /app
 
 COPY --from=builder /home/build/docker-startup.sh .
-COPY --from=builder /home/build/target/*.yaml .
 COPY --from=builder /home/build/target/pay-*-allinone.jar .
 
 ENTRYPOINT ["tini", "-e", "143", "--"]

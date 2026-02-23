@@ -7,4 +7,8 @@ public class ConnectorTaskQueueConfig {
     public int getFailedMessageRetryDelayInSeconds() {
         return failedMessageRetryDelayInSeconds;
     }
+
+    public void setFailedMessageRetryDelayInSeconds(int failedMessageRetryDelayInSeconds) {
+        this.failedMessageRetryDelayInSeconds = failedMessageRetryDelayInSeconds;
+    }
 }

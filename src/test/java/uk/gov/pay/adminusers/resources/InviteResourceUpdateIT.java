@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.Map;
 
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.http.HttpStatus.OK;
 import static uk.gov.pay.adminusers.fixtures.InviteDbFixture.inviteDbFixture;
 
 class InviteResourceUpdateIT extends IntegrationTest {
@@ -25,7 +25,7 @@ class InviteResourceUpdateIT extends IntegrationTest {
 
     @BeforeEach
     public void setUp() {
-        adminRole = getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        adminRole = getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
     }
     
     @Test
@@ -49,7 +49,7 @@ class InviteResourceUpdateIT extends IntegrationTest {
                 .body(mapper.writeValueAsString(request))
                 .patch("/v1/api/invites/" + inviteCode)
                 .then()
-                .statusCode(OK.getStatusCode())
+                .statusCode(OK.value())
                 .body("telephone_number", is(newPhoneNumber))
                 .body("password_set", is(true));
 

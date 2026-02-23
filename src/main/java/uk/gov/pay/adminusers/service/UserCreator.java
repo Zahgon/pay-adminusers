@@ -1,7 +1,6 @@
 package uk.gov.pay.adminusers.service;
 
-import com.google.inject.Inject;
-import com.google.inject.persist.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.gov.pay.adminusers.model.CreateUserRequest;
@@ -20,10 +19,12 @@ import uk.gov.service.payments.commons.model.SupportedLanguage;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Component;
 
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.conflictingServiceGatewayAccountsForUser;
 import static uk.gov.pay.adminusers.service.AdminUsersExceptions.undefinedRoleException;
 
+@Component
 public class UserCreator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UserCreator.class);
@@ -34,8 +35,6 @@ public class UserCreator {
     private final PasswordHasher passwordHasher;
     private final LinksBuilder linksBuilder;
     private final SecondFactorAuthenticator secondFactorAuthenticator;
-
-    @Inject
     public UserCreator(UserDao userDao,
                        RoleDao roleDao,
                        ServiceDao serviceDao,

@@ -1,23 +1,21 @@
 package uk.gov.pay.adminusers.persistence.dao;
 
-import com.google.inject.Inject;
-import com.google.inject.Provider;
-import com.google.inject.persist.Transactional;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.pay.adminusers.persistence.entity.ServiceRoleEntity;
 
 import jakarta.persistence.EntityManager;
 import java.util.List;
 
+@Repository
 @Transactional
 public class ServiceRoleDao extends JpaDao<ServiceRoleEntity> {
-
-    @Inject
-    /* default */ ServiceRoleDao(Provider<EntityManager> entityManager) {
+    /* default */ ServiceRoleDao(EntityManager entityManager) {
         super(entityManager, ServiceRoleEntity.class);
     }
 
     public List<ServiceRoleEntity> findServiceUserRoles(Integer serviceId) {
-        return entityManager.get()
+        return entityManager
                 .createQuery("select sre from ServiceRoleEntity sre where sre.service.id = :serviceId")
                 .setParameter("serviceId", serviceId)
                 .getResultList();

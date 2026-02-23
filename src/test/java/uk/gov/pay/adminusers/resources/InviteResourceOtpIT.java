@@ -11,12 +11,6 @@ import uk.gov.pay.adminusers.persistence.dao.RoleDao;
 import java.util.Map;
 
 import static io.restassured.http.ContentType.JSON;
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static jakarta.ws.rs.core.Response.Status.GONE;
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
-import static jakarta.ws.rs.core.Response.Status.NO_CONTENT;
-import static jakarta.ws.rs.core.Response.Status.PRECONDITION_FAILED;
-import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static org.apache.commons.lang3.RandomStringUtils.random;
@@ -24,6 +18,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.GONE;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
+import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 class InviteResourceOtpIT extends IntegrationTest {
 
@@ -38,7 +38,7 @@ class InviteResourceOtpIT extends IntegrationTest {
 
     @BeforeEach
     void givenAnExistingInvite() {
-        adminRole = getInjector().getInstance(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
+        adminRole = getBean(RoleDao.class).findByRoleName(RoleName.ADMIN).get().toRole();
         code = InviteDbFixture.inviteDbFixture(databaseHelper)
                 .withEmail(EMAIL)
                 .withOtpKey(OTP_KEY)
@@ -59,7 +59,7 @@ class InviteResourceOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(INVITES_VALIDATE_OTP_RESOURCE_URL)
                 .then()
-                .statusCode(NOT_FOUND.getStatusCode());
+                .statusCode(NOT_FOUND.value());
     }
 
     @Test
@@ -84,7 +84,7 @@ class InviteResourceOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(INVITES_VALIDATE_OTP_RESOURCE_URL)
                 .then()
-                .statusCode(UNAUTHORIZED.getStatusCode());
+                .statusCode(UNAUTHORIZED.value());
     }
 
     @Test
@@ -110,7 +110,7 @@ class InviteResourceOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(INVITES_VALIDATE_OTP_RESOURCE_URL)
                 .then()
-                .statusCode(GONE.getStatusCode());
+                .statusCode(GONE.value());
 
         // check if "login_counter" and "disabled" columns are properly updated
         Map<String, Object> foundInvite = databaseHelper.findInviteByCode(code).get();
@@ -166,7 +166,7 @@ class InviteResourceOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(INVITES_VALIDATE_OTP_RESOURCE_URL)
                 .then()
-                .statusCode(NO_CONTENT.getStatusCode());
+                .statusCode(NO_CONTENT.value());
     }
 
     @Test
@@ -188,7 +188,7 @@ class InviteResourceOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(INVITES_VALIDATE_OTP_RESOURCE_URL)
                 .then()
-                .statusCode(UNAUTHORIZED.getStatusCode());
+                .statusCode(UNAUTHORIZED.value());
     }
 
     @Test
@@ -203,7 +203,7 @@ class InviteResourceOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(format(INVITES_SEND_OTP_RESOURCE_URL, code))
                 .then()
-                .statusCode(NO_CONTENT.getStatusCode());
+                .statusCode(NO_CONTENT.value());
     }
 
     @Test
@@ -213,7 +213,7 @@ class InviteResourceOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(format(INVITES_SEND_OTP_RESOURCE_URL, "non-existent-invite"))
                 .then()
-                .statusCode(NOT_FOUND.getStatusCode());
+                .statusCode(NOT_FOUND.value());
     }
 
     @Test
@@ -223,7 +223,7 @@ class InviteResourceOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(format(INVITES_SEND_OTP_RESOURCE_URL, ""))
                 .then()
-                .statusCode(BAD_REQUEST.getStatusCode());
+                .statusCode(BAD_REQUEST.value());
     }
 
     @Test
@@ -238,6 +238,6 @@ class InviteResourceOtpIT extends IntegrationTest {
                 .contentType(JSON)
                 .post(format(INVITES_SEND_OTP_RESOURCE_URL, code))
                 .then()
-                .statusCode(PRECONDITION_FAILED.getStatusCode());
+                .statusCode(PRECONDITION_FAILED.value());
     }
 }

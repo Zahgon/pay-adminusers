@@ -1,6 +1,6 @@
 # pay-adminusers
 
-The GOV.UK Pay Admin Users Module in Java (Dropwizard)
+The GOV.UK Pay Admin Users Module in Java (Spring Boot)
 
 ## API Specification
 
@@ -13,7 +13,7 @@ examples.
 
 | NAME                                                                          | DESCRIPTION                                                                                                                                                                                                                                |
 |-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ADMIN_PORT`                                                                  | The port number to listen for Dropwizard admin requests on. Defaults to `8081`.                                                                                                                                                            |
+| `ADMIN_PORT`                                                                  | The port number to listen for admin requests (`/ping`, `/healthcheck`, `/metrics`) on. Defaults to `8081`.                                                                                                                                                            |
 | `BIND_HOST`                                                                   | The IP address for the application to bind to. Defaults to `127.0.0.1`                                                                                                                                                                     |
 | `BASE_URL`                                                                    | This is the publicly visible URL for the pay admin users root. Defaults to `http://localhost:8080`.                                                                                                                                        |
 | `DB_HOST`                                                                     | The hostname of the database server.                                                                                                                                                                                                       |
@@ -57,6 +57,19 @@ examples.
 | `EXPUNGE_ARCHIVE_SERVICES_AFTER_DAYS`                                         | Number of days after which services without transactions archived. Default is `2555` (7 years).                                                                                                                                            |
 
 -----------------------------------------------------------------------------------------------------------
+
+## Running
+
+`mvn package` builds `target/pay-adminusers-0.1-SNAPSHOT-allinone.jar`. The service is configured through the
+environment variables above only; the first arguments name the command to run (a trailing configuration file
+argument is accepted and ignored):
+
+| Command                                        | Effect                                                                    |
+|------------------------------------------------|---------------------------------------------------------------------------|
+| `java -jar <jar> server`                       | runs the service on `PORT`, with the admin endpoints on `ADMIN_PORT`      |
+| `java -jar <jar> waitOnDependencies`           | waits until the database accepts connections                              |
+| `java -jar <jar> migrateToInitialDbState`      | creates the initial (selfservice) database state if there is none         |
+| `java -jar <jar> db migrate`                   | applies the pending Liquibase change sets of `migrations.xml`             |
 
 ## Maven profiles
 

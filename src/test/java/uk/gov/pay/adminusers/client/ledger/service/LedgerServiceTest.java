@@ -4,74 +4,68 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import uk.gov.pay.adminusers.app.config.AdminUsersConfig;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
+import uk.gov.pay.adminusers.app.config.RestClientConfig;
+import uk.gov.pay.adminusers.client.RestClientFactory;
 import uk.gov.pay.adminusers.client.ledger.exception.LedgerException;
 import uk.gov.pay.adminusers.client.ledger.model.LedgerSearchTransactionsResponse;
 import uk.gov.pay.adminusers.client.ledger.model.LedgerTransaction;
 
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.Invocation;
-import jakarta.ws.rs.client.WebTarget;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.UriBuilder;
+import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static org.apache.http.HttpStatus.SC_INTERNAL_SERVER_ERROR;
-import static org.apache.http.HttpStatus.SC_OK;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpHeaders.ACCEPT;
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
-@RunWith(MockitoJUnitRunner.class)
-public class LedgerServiceTest {
+class LedgerServiceTest {
 
-    @Mock
-    AdminUsersConfig mockConfiguration;
-
-    @Mock
-    private Client mockClient;
-
-    @Mock
-    private WebTarget mockWebTarget;
-
-    @Mock
-    private Invocation.Builder mockInvocationBuilder;
-
-    @Mock
-    private Response mockResponse;
+    private HttpClient httpClient;
+    private MockRestServiceServer mockLedger;
 
     private LedgerService serviceUnderTest;
 
     private static final String LEDGER_URL = "http://ledgerUrl";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Before
-    public void setUp() {
-        when(mockConfiguration.getLedgerBaseUrl()).thenReturn(LEDGER_URL);
-        when(mockClient.target(any(UriBuilder.class))).thenReturn(mockWebTarget);
-        when(mockWebTarget.request()).thenReturn(mockInvocationBuilder);
-        when(mockInvocationBuilder.accept(APPLICATION_JSON)).thenReturn(mockInvocationBuilder);
-        when(mockInvocationBuilder.get()).thenReturn(mockResponse);
-        when(mockResponse.getStatus()).thenReturn(SC_OK);
-        serviceUnderTest = new LedgerService(mockClient, mockConfiguration);
+    @BeforeEach
+    void setUp() {
+        httpClient = RestClientFactory.buildHttpClient(new RestClientConfig());
+        RestClient.Builder clientBuilder = RestClientFactory.buildClient(httpClient).mutate();
+        mockLedger = MockRestServiceServer.bindTo(clientBuilder).build();
+        serviceUnderTest = new LedgerService(clientBuilder.build(), LEDGER_URL);
+    }
+
+    @AfterEach
+    void tearDown() {
+        httpClient.close();
     }
 
     @Test
-    public void getTransaction_shouldDeserialiseLedgerPaymentTransactionCorrectly() throws JsonProcessingException {
+    void getTransaction_shouldDeserialiseLedgerPaymentTransactionCorrectly() throws JsonProcessingException {
         String externalId = "e8eq11mi2ndmauvb51qsg8hccn";
         ImmutableMap<String, String> transactionData = ImmutableMap.of("transaction_id", externalId, "reference", "test event ref", "foo", "bar");
         String ledgerPayload = new Gson().toJson(transactionData);
-        when(mockResponse.readEntity(LedgerTransaction.class)).thenReturn(objectMapper.readValue(ledgerPayload, LedgerTransaction.class));
+        mockLedger.expect(requestTo(LEDGER_URL + "/v1/transaction/" + externalId + "?override_account_id_restriction=true"))
+                .andExpect(method(GET))
+                .andExpect(header(ACCEPT, APPLICATION_JSON_VALUE))
+                .andRespond(withStatus(OK).contentType(APPLICATION_JSON).body(ledgerPayload));
         Optional<LedgerTransaction> mayBeTransaction = serviceUnderTest.getTransaction(externalId);
         assertThat(mayBeTransaction.isPresent(), is(true));
         LedgerTransaction transaction = mayBeTransaction.get();
@@ -80,7 +74,7 @@ public class LedgerServiceTest {
     }
 
     @Test
-    public void searchTransactions_shouldDeserialiseSearchTransactionsResponseCorrectly() throws JsonProcessingException {
+    void searchTransactions_shouldDeserialiseSearchTransactionsResponseCorrectly() throws JsonProcessingException {
         String externalId = "e8eq11mi2ndmauvb51qsg8hccn";
         Map<String, Object> transactionData = Map.of(
                 "total", 1,
@@ -91,7 +85,10 @@ public class LedgerServiceTest {
                 ));
         String ledgerPayload = objectMapper.writeValueAsString(transactionData);
 
-        when(mockResponse.readEntity(LedgerSearchTransactionsResponse.class)).thenReturn(objectMapper.readValue(ledgerPayload, LedgerSearchTransactionsResponse.class));
+        mockLedger.expect(requestTo(LEDGER_URL + "/v1/transaction?account_id=1&display_size=1"))
+                .andExpect(method(GET))
+                .andExpect(header(ACCEPT, APPLICATION_JSON_VALUE))
+                .andRespond(withStatus(OK).contentType(APPLICATION_JSON).body(ledgerPayload));
         LedgerSearchTransactionsResponse ledgerSearchTransactionsResponse = serviceUnderTest.searchTransactions("1", 1);
         assertThat(ledgerSearchTransactionsResponse.getTransactions().size(), is(1));
         assertThat(ledgerSearchTransactionsResponse.getTransactions().get(0).getCreatedDate().toString(), is("2023-10-09T16:31:13.511Z"));
@@ -99,8 +96,9 @@ public class LedgerServiceTest {
     }
 
     @Test
-    public void searchTransactions_shouldThrowExceptionIfLedgerReturnsNon2xxError() throws JsonProcessingException {
-        when(mockResponse.getStatus()).thenReturn(SC_INTERNAL_SERVER_ERROR);
+    void searchTransactions_shouldThrowExceptionIfLedgerReturnsNon2xxError() throws JsonProcessingException {
+        mockLedger.expect(requestTo(LEDGER_URL + "/v1/transaction?account_id=1&display_size=1"))
+                .andRespond(withStatus(INTERNAL_SERVER_ERROR));
 
         assertThrows(LedgerException.class, () -> serviceUnderTest.searchTransactions("1", 1));
     }
